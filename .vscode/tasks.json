@@ -1,0 +1,19 @@
+{
+    "version": "0.1.0",
+    "command": "tsc",
+    "isShellCommand": true,
+    "args": ["-p", ".vscode/tsconfig.json"],
+    "showOutput": "always",
+    "suppressTaskName": true,
+    "echoCommand": false,
+    "tasks": [
+        {
+            "taskName": "build",
+            "showOutput": "silent",
+            "isBuildCommand": true,
+            "problemMatcher": [
+                "$tsc"
+            ]
+        }
+    ]
+}

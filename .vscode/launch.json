@@ -1,0 +1,26 @@
+{
+    // Use IntelliSense to learn about possible Node.js debug attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch",
+            "program": "${workspaceRoot}\\src\\debug.ts",
+            "env": {
+                "DEBUG": "*"
+            }
+        },
+        {
+            "type": "phantomjs",
+            "request": "launch",
+            "name": "PhatomJs",
+            "webRoot": "${workspaceRoot}",
+            "file": "${workspaceRoot}\\src\\debug.js",
+            "runtimeExecutable": "${workspaceRoot}\\node_modules\\phantomjs-prebuilt\\lib\\phantom\\bin\\phantomjs.exe",
+            "sourceMaps": true
+        }
+    ]
+}
