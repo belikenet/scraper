@@ -14,4 +14,7 @@ results
 node_modules
 bin
 client
+
 npm-debug.log
+output.json
+output.csv
