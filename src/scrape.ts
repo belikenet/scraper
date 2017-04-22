@@ -1,12 +1,12 @@
 /// <reference types="jquery" />
 import * as fs from "fs";
-//import * as Nightmare from "nightmare";
 import * as winston from "winston";
 const Nightmare = require ("nightmare");
 
+import * as csv from 'd3-dsv';
+import * as S from "string";
 
 import md5 = require("md5");
-import { create } from "webpage";
 
 module Utils {
     export function isFunction (f) : boolean {
@@ -67,14 +67,19 @@ module Utils {
         },
                             function(e){ return {data:e, status: "rejected" }});
     }
-}
 
-//interface IWebPageScraper extends WebPage {
-//    waitFor (test: (any)=>boolean, callback: (IWebPageScraper)=>void);
-//    evalJs (code: string|Function) :any;
-//    resource: ResourceResponse;
-//    //state: any;
-//}
+    export function flatten (object) {
+        return Object.assign( {}, ...function _flatten( objectBit, path = '' ) {  //spread the result into our return object
+            return [].concat(                                                       //concat everything into one level
+            ...Object.keys( objectBit ).map(                                      //iterate over object
+                key => typeof objectBit[ key ] === 'object' && objectBit [ key ] !== null ?                       //check if there is a nested object
+                _flatten( objectBit[ key ], `${ path.length ? path + "." : path }${ key }` ) :              //call itself if there is
+                ( { [ `${ path.length ? path + "." : path }${ key }` ]: objectBit[ key ] } )                //append object with it’s path as key
+            )
+            )
+        }( object ) );
+    };
+}
 
 class WebScrapper {
     page: any;
@@ -88,46 +93,53 @@ class WebScrapper {
         this.scraperConfig = scraperConfig;
     }
 
-    scrape(url: string, dataScraper: () => void, complete: (any?)=>void, urlScraper: () => void, urlComplete: (any?)=>void)
+    scrape (url: string, dataScraper: Function, complete: (any?)=>void, urlScraper: () => void, urlComplete: (any?)=>void)
     {
         let _self = this;
+        var thens : Promise<any>[] = [];
         winston.info("Opening " + url);
+
         var nightmare = Nightmare({show: true, webPreferences: {images: false}});
-        var page1 =  nightmare
-                    .goto(url)
-                    .wait(".OrgResults")
-                    .evaluate(dataScraper)
-                    .then(function(data) {complete(data);})
-                    .catch((err) => {console.log(`error dataScraper: ${err}`);});
 
-         var page2 = nightmare.wait()
-                    .evaluate(function() {return document.title; })
-                    .then(function(a,b) {
-                        console.log(`run2: a:${a} b:${b}`); 
-                        
-                        return a;
-                    });
-        
-        var page = Promise.all([page1,page2]).then(() => {
-            nightmare.end().then(() => {
-                console.log("end"); 
-                return nightmare.end().then();
-            });
-            return "dataaaa";
+        var then = nightmare.goto(url)
+        .then (() => {
+            if (_self.scraperConfig.injectJQuery)
+            {
+            return nightmare.inject("js", "client\\jquery.js")
+                    .evaluate(Function("window._pjs$ = jQuery.noConflict(true);"))
+                    .inject("js", "client\\pjscrape_client.js")
+                    .wait(Function("return window._pjs.ready;"));
+            }
+            return new Promise((resolve, reject) => resolve(false));
+        }).then(() => {
+            if (!S(_self.scraperConfig.waitFor).isEmpty())
+                return nightmare.wait(_self.scraperConfig.waitFor);
+
+            return new Promise((resolve,reject) => resolve(false));
+        }).then(() => {
+            if (dataScraper != null)
+                return nightmare.evaluate(dataScraper);
+
+            return new Promise((resolve,reject) => resolve(null));                        
+        }).then(function(data) {
+            if (data != null)
+                complete(data);
+             
+             if (urlScraper != null)
+                return nightmare.evaluate(urlScraper);
+            return new Promise((resolve,reject) => resolve(null));
+        }).then((data) => {
+            if (data != null)
+                urlComplete(data);
+
+            return nightmare.end();
+        }).then(() => {
+            winston.info("scraper end");
+        }).catch((error) => {
+            winston.error("ERROR " + error);
         });
-
-                    //.end().then(() => {});
-                    //page = page.end().then(); // no
-//        if (dataScraper){
-//            page = page.evaluate(dataScraper)
-//                       .then(complete);
-            //page.run(complete);
-//        }
-        //if (urlScraper){
-        //    page.evaluate(urlScraper, urlComplete);
-        //page = page.end().then();
-        //page.end();
-        return page;
+        
+        return then;
     }
 }
 
@@ -176,23 +188,6 @@ class WebPageSerialLauncher implements IWebPageLauncher {
     complete(scraperResult: any){
         console.log("data complete");
         this._scraper.addItem(scraperResult);
-
-        /*if (page && this._scraperConfig.moreUrls && (!this._scraperConfig.maxDepth || this.launcherConfig.depth < this._scraperConfig.maxDepth)) {
-            // allow selector-only spiders
-            let validMoreUrls = this._scraperConfig.moreUrls;
-            if (typeof validMoreUrls == 'string') {
-                validMoreUrls = "return _pjs.getAnchorUrls('" + this._scraperConfig.moreUrls + "');";
-            }
-
-            // look for more urls on this page
-            var moreUrls = page.evalJs(validMoreUrls);
-            if (moreUrls) {
-                if (moreUrls.length) {
-                    winston.info('Found ' + moreUrls.length + ' additional urls to scrape');
-                    this._scraper.addLauncher(moreUrls, this.launcherConfig.buildChild());
-                }
-            }
-        }*/
     }
 
     private extractMoreUrls() : any {
@@ -202,11 +197,13 @@ class WebPageSerialLauncher implements IWebPageLauncher {
             if (typeof validMoreUrls == 'string') {
                 if (validMoreUrls.length == 0) return null;
                 // requires jQuery
-                validMoreUrls = "return $(" + this._scraperConfig.moreUrls + ").map(function() {var href = $(this).attr('href');return (href && href.indexOf('#') !== 0 && (includeOffsite || isLocalUrl(href))) ? toFullUrl(href) : undefined; }).toArray();";
+                //validMoreUrls = "return $('" + this._scraperConfig.moreUrls + "').map(function() {var href = $(this).attr('href');return (href && href.indexOf('#') !== 0 && (includeOffsite || isLocalUrl(href))) ? window._pjs.toFullUrl(href) : undefined; }).toArray();";
+                validMoreUrls = "return _pjs.getAnchorUrls('" + this._scraperConfig.moreUrls + "')";
                 return Function (validMoreUrls);
             } else 
                 return this._scraperConfig.moreUrls;
         }
+        return null;
     }
 
     private completeMoreUrls(moreUrls: string[]) {
@@ -224,7 +221,7 @@ class WebPageSerialLauncher implements IWebPageLauncher {
         this.urls.forEach(function (url) {
             var waiter = new WebScrapper(new WebPageScraperConfig(), _self._scraperConfig)
                 .scrape(url, _self._scraperConfig.scraper, (data) => _self.complete(data), 
-                             _self.extractMoreUrls, (data) => _self.completeMoreUrls(data));
+                             _self.extractMoreUrls(), (data) => _self.completeMoreUrls(data));
             waiters.push(waiter);
         });
         //Promise.all(waiters).then(values => console.log(values));
@@ -236,7 +233,6 @@ class WebPageSerialLauncher implements IWebPageLauncher {
 }
 
 interface IWebPageLauncher {
-    //constructor(scraper: Scraper, config: ScraperConfig, depth: number, title?: string)
     launchUrls();
 }
 
@@ -272,14 +268,9 @@ export class Scraper {
      */
     constructor(config: ScraperConfig = new ScraperConfig()) {
         this.config = config;
-        //this.config.nightmare = new Nightmare();
         this._urlManager = new UrlManager(config);
         this._scraperConfig = new WebPageScraperConfig();
     }
-
-    //addLauncher(launcher: IWebPageLauncher){
-    //    this.launchers.push(launcher);
-    //}
 
     addLauncher(urls: string[], config: WebPageLauncherConfig) : void{
         var newLauncher = this.buildLauncher(urls, config);
@@ -288,10 +279,34 @@ export class Scraper {
     }
 
     addItem(item: any|any[]) {
+        var self = this;
         // check for ignoreDuplicates
         if (item)
             // apply for flattening items
-            this.items = this.items.concat.apply(item);
+            this.items = this.items
+                .concat.apply(item)
+                .map((i) => 
+                    {
+                        var merged = Object.assign({}, self.config.dataTemplate, i);
+                        merged.contact = Object.assign({}, self.config.dataTemplate.contact, i.contact)
+                        if (S(merged.name).isEmpty()) merged.notes += "name not found. ";
+                        else merged.name = S(merged.name).collapseWhitespace().toString();
+                        if (S(merged.url).isEmpty()) merged.notes += "url not found. ";
+                        if (S(merged._type).isEmpty()) merged.notes += "type not found. ";
+                        if (S(merged.contact.country).isEmpty()) merged.notes += "country not found";
+                        merged.contact.country = S(merged.contact.country).collapseWhitespace().toString();
+                        merged.contact.phone = S(merged.contact.phone).collapseWhitespace().toString();
+                        merged.contact.fax = S(merged.contact.fax).collapseWhitespace().toString();
+                        merged.contact.email = S(merged.contact.email).collapseWhitespace().toString();
+                        merged.contact.website = S(merged.contact.website).collapseWhitespace().toString();
+                        merged.contact.address = S(merged.contact.address)
+                                                    .lines()
+                                                    .map((l) => S(l).collapseWhitespace())
+                                                    .filter(i => !S(i).isEmpty())
+                                                    .join(", ");
+
+                        return merged;
+                    });
     }
 
     private buildLauncher(urls: string[], launcherConfig: WebPageLauncherConfig) : IWebPageLauncher {
@@ -314,7 +329,10 @@ export class Scraper {
         }
 
         console.log("writing");
-        fs.writeFile(this._scraperConfig.outFile, JSON.stringify(this.items));        
+        if (this._scraperConfig.format == "json")
+            fs.writeFile(this._scraperConfig.outFile, JSON.stringify(this.items));
+        if (this._scraperConfig.format == "csv")
+            fs.writeFile(this._scraperConfig.outFile, csv.csvFormat(this.items.map(i => Utils.flatten(i)).filter(i => i)));
     }
 
 }
@@ -323,44 +341,48 @@ export class ScraperConfig {
     debugResponse: boolean = false;
     debugRequest: boolean = false;
     debug: boolean = false;
-    noConflict: boolean;
-    ready: "return _pjs.ready;"; // function returns boolean
-    //scrapable: () => boolean; // function returns boolean
+    //noConflict: boolean;
     loadScript: string[];
-    //preScrape: boolean;
     depth: number = 0;
-    //nightmare: Nightmare;
 
     //
-    moreUrls: (string|Function) = "";
+    moreUrls: (string|Function) = ".msl_organisation_list .msl-listingitem-link";
     maxDepth: number = 1;
     newHashNewPage: boolean = true;
-    scraper: () => void = function () {        
-        var c:any[] = [];
-        $(".OrgResult").each(function (i, v) {
-            var x:any = {};
-            x.contact = {};
-            x.name = $(".Name", v).text();
-            x.contact.phone = $("a:contains('-')", v).text();
-            x.contact.email = $("a:contains('@')", v).text();
-            x.contact.website = $("a:contains('http://')", v).text();
-            x.contact.address = $(".Address", v).text().trim().replace("Address", "");
-            c.push(x);
-        });
-        return c;
+    injectJQuery: boolean = true;
+    waitFor: string = "main";
+    scraper: Function = function () {
+        var x:any = {};
+        x.contact = {};
+        x.url = document.location.href;        
+        return x;
     };
     allowRepeatedUrls: boolean = false;
     ignoreDuplicates: boolean = true; // ignore data duplicates
-    url: string = "http://www.diocesefwsb.org/Find-a-Parish?Type=Church&Alphabet=C";
+    url: string = "https://www.sussexstudent.com/sport-societies-media/sports-club-societies-list/"; //"http://www.diocesefwsb.org/Find-a-Parish?Type=Church&Alphabet=C";
+    dataTemplate = {
+        name: null,
+        "_type" : "CH",
+        url: null,
+        contact : {
+            country: "GB",
+            email: "",
+            phone: "",
+            fax: "",
+            address: "",
+            website: ""
+        },
+        "notes": ""
+    };
 }
 
 class WebPageScraperConfig {
     delayBetweenRuns: number = 0;
     timeoutInterval: number = 100;
     timeoutLimit: number = 3000;
-    format: string = "json";
+    format: string = "csv";
     logFile: string = "output.txt";
-    outFile: string = "output.json";
+    outFile: string = "output.csv";
 }
 
 
