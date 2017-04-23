@@ -196,8 +196,6 @@ class WebPageSerialLauncher implements IWebPageLauncher {
             let validMoreUrls = this._scraperConfig.moreUrls;
             if (typeof validMoreUrls == 'string') {
                 if (validMoreUrls.length == 0) return null;
-                // requires jQuery
-                //validMoreUrls = "return $('" + this._scraperConfig.moreUrls + "').map(function() {var href = $(this).attr('href');return (href && href.indexOf('#') !== 0 && (includeOffsite || isLocalUrl(href))) ? window._pjs.toFullUrl(href) : undefined; }).toArray();";
                 validMoreUrls = "return _pjs.getAnchorUrls('" + this._scraperConfig.moreUrls + "')";
                 return Function (validMoreUrls);
             } else 
@@ -217,18 +215,22 @@ class WebPageSerialLauncher implements IWebPageLauncher {
 
     launchUrls() {
         var _self = this;
-        var waiters : Promise<any>[] = [];
-        this.urls.forEach(function (url) {
-            var waiter = new WebScrapper(new WebPageScraperConfig(), _self._scraperConfig)
+        var chain = Promise.resolve();
+        this.urls.slice(0,5).forEach((url)=> {
+            chain = chain.then(() => {
+                return new WebScrapper(new WebPageScraperConfig(), _self._scraperConfig)
                 .scrape(url, _self._scraperConfig.scraper, (data) => _self.complete(data), 
                              _self.extractMoreUrls(), (data) => _self.completeMoreUrls(data));
-            waiters.push(waiter);
-        });
-        //Promise.all(waiters).then(values => console.log(values));
-        return Promise.all(waiters.map(Utils.reflect)).then(function(results){
-            console.log(`all: ${JSON.stringify(results)}`);
+            })
         })
-        //console.log("launchUrls finished")
+
+        chain.then(() => {
+            winston.info("ending lauchUrls loop");
+        }).catch((error) => {
+            winston.error("ERROR: " + error);
+        });
+
+        return chain;
     }
 }
 
