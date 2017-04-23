@@ -11,6 +11,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference types="jquery" />
 const fs = require("fs");
 const winston = require("winston");
+const settings_1 = require("./settings");
+const settings_web_1 = require("./settings.web");
 const Nightmare = require("nightmare");
 const csv = require("d3-dsv");
 const S = require("string");
@@ -199,9 +201,9 @@ class WebPageSerialLauncher {
     launchUrls() {
         var _self = this;
         var chain = Promise.resolve();
-        this.urls.forEach((url) => {
+        this.urls.slice(0, 2).forEach((url) => {
             chain = chain.then(() => {
-                return new WebScrapper(new WebPageScraperConfig(), _self._scraperConfig)
+                return new WebScrapper(new settings_1.Settings(), _self._scraperConfig)
                     .scrape(url, _self._scraperConfig.scraper, (data) => _self.complete(data), _self.extractMoreUrls(), (data) => _self.completeMoreUrls(data));
             });
         });
@@ -231,12 +233,12 @@ class Scraper {
     /**
      *
      */
-    constructor(config = new ScraperConfig()) {
+    constructor(config = new settings_web_1.SettingsWeb()) {
         this.launchers = [];
         this.items = [];
         this.config = config;
-        this._urlManager = new UrlManager(config);
-        this._scraperConfig = new WebPageScraperConfig();
+        this._scraperConfig = new settings_1.Settings();
+        this._urlManager = new UrlManager(this._scraperConfig);
     }
     addLauncher(urls, config) {
         var newLauncher = this.buildLauncher(urls, config);
@@ -304,56 +306,4 @@ class Scraper {
     }
 }
 exports.Scraper = Scraper;
-var _pjs$;
-class ScraperConfig {
-    constructor() {
-        this.debugResponse = false;
-        this.debugRequest = false;
-        this.debug = false;
-        this.depth = 0;
-        //
-        this.moreUrls = ".msl_organisation_list .msl-listingitem-link";
-        this.maxDepth = 1;
-        this.newHashNewPage = true;
-        this.injectJQuery = true;
-        this.waitFor = "main";
-        this.scraper = function () {
-            var x = {};
-            x.name = _pjs$(".col-md-8 h2").text();
-            x.contact = {};
-            x.contact.email = _pjs$("a.msl_email").attr("href");
-            x.contact.website = _pjs$("a.msl_web").attr("href") || _pjs$("a.msl_facebook").attr("href");
-            x.url = document.location.href;
-            return x;
-        };
-        this.allowRepeatedUrls = false;
-        this.ignoreDuplicates = true; // ignore data duplicates
-        this.url = "https://www.sussexstudent.com/sport-societies-media/sports-club-societies-list/"; //"http://www.diocesefwsb.org/Find-a-Parish?Type=Church&Alphabet=C";
-        this.dataTemplate = {
-            name: null,
-            "_type": "CH",
-            url: null,
-            contact: {
-                country: "GB",
-                email: "",
-                phone: "",
-                fax: "",
-                address: "",
-                website: ""
-            },
-            "notes": ""
-        };
-    }
-}
-exports.ScraperConfig = ScraperConfig;
-class WebPageScraperConfig {
-    constructor() {
-        this.delayBetweenRuns = 0;
-        this.timeoutInterval = 100;
-        this.timeoutLimit = 3000;
-        this.format = "csv";
-        this.logFile = "output.txt";
-        this.outFile = "output.csv";
-    }
-}
 //# sourceMappingURL=scrape.js.map

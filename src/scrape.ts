@@ -1,6 +1,8 @@
 /// <reference types="jquery" />
 import * as fs from "fs";
 import * as winston from "winston";
+import { Settings } from "./settings";
+import { SettingsWeb } from "./settings.web";
 const Nightmare = require ("nightmare");
 
 import * as csv from 'd3-dsv';
@@ -83,12 +85,12 @@ module Utils {
 
 class WebScrapper {
     page: any;
-    config: WebPageScraperConfig;
-    scraperConfig: ScraperConfig;
+    config: Settings;
+    scraperConfig: SettingsWeb;
     /**
      *
      */
-    constructor(config: WebPageScraperConfig, scraperConfig?: ScraperConfig) {
+    constructor(config: Settings, scraperConfig?: SettingsWeb) {
         this.config = config;
         this.scraperConfig = scraperConfig;
     }
@@ -145,12 +147,12 @@ class WebScrapper {
 
 class UrlManager {
     visitedUrls : string[] = [];
-    config: ScraperConfig;
+    config: Settings;
 
     /**
      *
      */
-    constructor(config: ScraperConfig) {
+    constructor(config: Settings) {
         this.config = config;
     }
 
@@ -174,7 +176,7 @@ class WebPageParallelLauncher {
 
 class WebPageSerialLauncher implements IWebPageLauncher {
     private _scraper : Scraper;
-    private _scraperConfig : ScraperConfig;
+    private _scraperConfig : SettingsWeb;
     readonly launcherConfig : WebPageLauncherConfig;
     readonly urls: string[];
 
@@ -216,9 +218,9 @@ class WebPageSerialLauncher implements IWebPageLauncher {
     launchUrls() {
         var _self = this;
         var chain = Promise.resolve();
-        this.urls.forEach((url)=> {
+        this.urls.slice(0,2).forEach((url)=> {
             chain = chain.then(() => {
-                return new WebScrapper(new WebPageScraperConfig(), _self._scraperConfig)
+                return new WebScrapper(new Settings(), _self._scraperConfig)
                 .scrape(url, _self._scraperConfig.scraper, (data) => _self.complete(data), 
                              _self.extractMoreUrls(), (data) => _self.completeMoreUrls(data));
             })
@@ -261,17 +263,17 @@ class WebPageLauncherConfig {
 export class Scraper {
     private launchers: IWebPageLauncher[] = [];
     private items: any[] = [];
-    readonly config: ScraperConfig;
+    readonly config: SettingsWeb;
     private _urlManager : UrlManager;
-    private _scraperConfig : WebPageScraperConfig;
+    private _scraperConfig : Settings;
 
     /**
      *
      */
-    constructor(config: ScraperConfig = new ScraperConfig()) {
+    constructor(config: SettingsWeb = new SettingsWeb()) {
         this.config = config;
-        this._urlManager = new UrlManager(config);
-        this._scraperConfig = new WebPageScraperConfig();
+        this._scraperConfig = new Settings();
+        this._urlManager = new UrlManager(this._scraperConfig);
     }
 
     addLauncher(urls: string[], config: WebPageLauncherConfig) : void{
@@ -341,59 +343,3 @@ export class Scraper {
     }
 
 }
-
-var _pjs$ : JQueryStatic;
-
-export class ScraperConfig {
-    debugResponse: boolean = false;
-    debugRequest: boolean = false;
-    debug: boolean = false;
-    //noConflict: boolean;
-    loadScript: string[];
-    depth: number = 0;
-
-    //
-    moreUrls: (string|Function) = ".msl_organisation_list .msl-listingitem-link";
-    maxDepth: number = 1;
-    newHashNewPage: boolean = true;
-    injectJQuery: boolean = true;
-    waitFor: string = "main";
-    scraper: Function = function () {
-        var x:any = {};
-        x.name = _pjs$(".col-md-8 h2").text();
-        x.contact = {};
-        x.contact.email = _pjs$("a.msl_email").attr("href");
-        x.contact.website = _pjs$("a.msl_web").attr("href") || _pjs$("a.msl_facebook").attr("href");
-
-        x.url = document.location.href;      
-        return x;
-    };
-    allowRepeatedUrls: boolean = false;
-    ignoreDuplicates: boolean = true; // ignore data duplicates
-    url: string = "https://www.sussexstudent.com/sport-societies-media/sports-club-societies-list/"; //"http://www.diocesefwsb.org/Find-a-Parish?Type=Church&Alphabet=C";
-    dataTemplate = {
-        name: null,
-        "_type" : "CH",
-        url: null,
-        contact : {
-            country: "GB",
-            email: "",
-            phone: "",
-            fax: "",
-            address: "",
-            website: ""
-        },
-        "notes": ""
-    };
-}
-
-class WebPageScraperConfig {
-    delayBetweenRuns: number = 0;
-    timeoutInterval: number = 100;
-    timeoutLimit: number = 3000;
-    format: string = "csv";
-    logFile: string = "output.txt";
-    outFile: string = "output.csv";
-}
-
-
