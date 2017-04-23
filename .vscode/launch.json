@@ -8,19 +8,10 @@
             "type": "node",
             "request": "launch",
             "name": "Launch",
-            "program": "${workspaceRoot}\\src\\debug.ts",
-            "env": {
-                "DEBUG": "*"
-            }
-        },
-        {
-            "type": "phantomjs",
-            "request": "launch",
-            "name": "PhatomJs",
-            "webRoot": "${workspaceRoot}",
-            "file": "${workspaceRoot}\\src\\debug.js",
-            "runtimeExecutable": "${workspaceRoot}\\node_modules\\phantomjs-prebuilt\\lib\\phantom\\bin\\phantomjs.exe",
-            "sourceMaps": true
+            "program": "${workspaceRoot}\\src\\debug.ts"
+            //"env": {
+            //    "DEBUG": "*"
+            //}
         }
     ]
 }

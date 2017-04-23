@@ -12,17 +12,13 @@
     "d3-dsv": "^1.0.5",
     "md5": "^2.2.1",
     "nightmare": "^2.10.0",
-    "phantomjs-prebuilt": "^2.1.14",
     "string": "^3.3.3",
-    "vo": "^4.0.2",
-    "webpage": "^0.3.0",
     "winston": "^2.3.1"
   },
   "devDependencies": {
     "@types/jquery": "^2.0.41",
     "@types/md5": "^2.1.31",
     "@types/node": "^7.0.12",
-    "@types/phantomjs": "^1.9.29",
     "@types/string": "0.0.28",
     "@types/winston": "^2.3.0",
     "typescript": "^2.2.2"
