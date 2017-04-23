@@ -104,7 +104,7 @@ class WebScrapper {
         let _self = this;
         var thens = [];
         winston.info("Opening " + url);
-        var nightmare = Nightmare({ show: true, webPreferences: { images: false } });
+        var nightmare = Nightmare({ show: false, webPreferences: { images: false } });
         var then = nightmare.goto(url)
             .then(() => {
             if (_self.scraperConfig.injectJQuery) {
@@ -199,7 +199,7 @@ class WebPageSerialLauncher {
     launchUrls() {
         var _self = this;
         var chain = Promise.resolve();
-        this.urls.slice(0, 5).forEach((url) => {
+        this.urls.forEach((url) => {
             chain = chain.then(() => {
                 return new WebScrapper(new WebPageScraperConfig(), _self._scraperConfig)
                     .scrape(url, _self._scraperConfig.scraper, (data) => _self.complete(data), _self.extractMoreUrls(), (data) => _self.completeMoreUrls(data));
@@ -246,35 +246,37 @@ class Scraper {
     addItem(item) {
         var self = this;
         // check for ignoreDuplicates
-        if (item)
+        if (item) {
+            item = this.validateDataItem(item);
+            this.items = this.items.concat(item);
             // apply for flattening items
-            this.items = this.items
-                .concat.apply(item)
-                .map((i) => {
-                var merged = Object.assign({}, self.config.dataTemplate, i);
-                merged.contact = Object.assign({}, self.config.dataTemplate.contact, i.contact);
-                if (S(merged.name).isEmpty())
-                    merged.notes += "name not found. ";
-                else
-                    merged.name = S(merged.name).collapseWhitespace().toString();
-                if (S(merged.url).isEmpty())
-                    merged.notes += "url not found. ";
-                if (S(merged._type).isEmpty())
-                    merged.notes += "type not found. ";
-                if (S(merged.contact.country).isEmpty())
-                    merged.notes += "country not found";
-                merged.contact.country = S(merged.contact.country).collapseWhitespace().toString();
-                merged.contact.phone = S(merged.contact.phone).collapseWhitespace().toString();
-                merged.contact.fax = S(merged.contact.fax).collapseWhitespace().toString();
-                merged.contact.email = S(merged.contact.email).collapseWhitespace().toString();
-                merged.contact.website = S(merged.contact.website).collapseWhitespace().toString();
-                merged.contact.address = S(merged.contact.address)
-                    .lines()
-                    .map((l) => S(l).collapseWhitespace())
-                    .filter(i => !S(i).isEmpty())
-                    .join(", ");
-                return merged;
-            });
+            this.items = [].concat(this.items);
+        }
+    }
+    validateDataItem(source) {
+        var merged = Object.assign({}, this.config.dataTemplate, source);
+        merged.contact = Object.assign({}, this.config.dataTemplate.contact, source.contact);
+        if (S(merged.name).isEmpty())
+            merged.notes += "name not found. ";
+        else
+            merged.name = S(merged.name).collapseWhitespace().toString();
+        if (S(merged.url).isEmpty())
+            merged.notes += "url not found. ";
+        if (S(merged._type).isEmpty())
+            merged.notes += "type not found. ";
+        if (S(merged.contact.country).isEmpty())
+            merged.notes += "country not found";
+        merged.contact.country = S(merged.contact.country).collapseWhitespace().toString();
+        merged.contact.phone = S(merged.contact.phone).collapseWhitespace().toString();
+        merged.contact.fax = S(merged.contact.fax).collapseWhitespace().toString();
+        merged.contact.email = S(merged.contact.email).collapseWhitespace().toString();
+        merged.contact.website = S(merged.contact.website).collapseWhitespace().toString();
+        merged.contact.address = S(merged.contact.address)
+            .lines()
+            .map((l) => S(l).collapseWhitespace())
+            .filter(i => !S(i).isEmpty())
+            .join(", ");
+        return merged;
     }
     buildLauncher(urls, launcherConfig) {
         var validUrls = this._urlManager.addUrls(urls);
@@ -302,6 +304,7 @@ class Scraper {
     }
 }
 exports.Scraper = Scraper;
+var _pjs$;
 class ScraperConfig {
     constructor() {
         this.debugResponse = false;
@@ -316,7 +319,10 @@ class ScraperConfig {
         this.waitFor = "main";
         this.scraper = function () {
             var x = {};
+            x.name = _pjs$(".col-md-8 h2").text();
             x.contact = {};
+            x.contact.email = _pjs$("a.msl_email").attr("href");
+            x.contact.website = _pjs$("a.msl_web").attr("href") || _pjs$("a.msl_facebook").attr("href");
             x.url = document.location.href;
             return x;
         };
