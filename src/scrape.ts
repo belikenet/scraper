@@ -21,13 +21,23 @@ class WebScrapper {
         this.scraperConfig = scraperConfig;
     }
 
+
     scrape (url: string, dataScraper: Function, complete: (any?)=>void, urlScraper: () => void, urlComplete: (any?)=>void)
     {
         let _self = this;
         var thens : Promise<any>[] = [];
-        winston.info("Opening " + url);
+        winston.debug("Opening " + url);
 
         var nightmare = Nightmare({show: false, webPreferences: {images: false}});
+
+        var item : any = null;
+        function createOrUpdateItemNotes(notes: string) {
+            if (item != null)
+                if (item.notes === undefined) item.notes = notes;
+                else item.notes += notes;
+            else
+                item = {url: url, notes: notes};
+        }
 
         var then = nightmare.goto(url)
         .then (() => {
@@ -50,21 +60,31 @@ class WebScrapper {
 
             return new Promise((resolve,reject) => resolve(null));                        
         }).then(function(data) {
-            if (data != null)
-                complete(data);
+            item = data;
+            //if (data != null)
+            //    complete(data);
              
-             if (urlScraper != null)
+            if (urlScraper != null)
                 return nightmare.evaluate(urlScraper);
             return new Promise((resolve,reject) => resolve(null));
         }).then((data) => {
             if (data != null)
+            {
                 urlComplete(data);
+                createOrUpdateItemNotes("INDEX page. ")
+            }
 
             return nightmare.end();
         }).then(() => {
-            winston.info("scraper end");
+            winston.debug("scraper end");
         }).catch((error) => {
-            winston.error("ERROR " + error);
+            winston.error(error);
+            createOrUpdateItemNotes(`${error} `);
+        }).then(() => {
+            if (item != null)
+                complete(item);
+        }).catch((error) => {
+            winston.error(`${error}`);
         });
         
         return then;
@@ -72,7 +92,7 @@ class WebScrapper {
 }
 
 
-class WebPageSerialLauncher implements IWebPageLauncher {
+class WebPageLauncher implements IWebPageLauncher {
     private _scraper : Scraper;
     private _scraperConfig : SettingsWeb;
     readonly launcherConfig : WebPageLauncherSettings;
@@ -85,8 +105,8 @@ class WebPageSerialLauncher implements IWebPageLauncher {
         this.urls = urls;
     }
 
-    complete(scraperResult: any){
-        console.log("data complete");
+    private completeScraper(scraperResult: any){
+        winston.debug("data complete");
         this._scraper.addItem(scraperResult);
     }
 
@@ -107,7 +127,7 @@ class WebPageSerialLauncher implements IWebPageLauncher {
     private completeMoreUrls(moreUrls: string[]) {
             if (moreUrls) {
                 if (moreUrls.length) {
-                    winston.info('Found ' + moreUrls.length + ' additional urls to scrape');
+                    winston.debug('Found ' + moreUrls.length + ' additional urls to scrape');
                     this._scraper.addLauncher(moreUrls, this.launcherConfig.buildChild());
                 }
             }
@@ -116,7 +136,7 @@ class WebPageSerialLauncher implements IWebPageLauncher {
     launchUrls() {
         var _self = this;
         var chain = Promise.resolve();
-        this.urls.slice(0,2).forEach((url)=> {
+        this.urls.forEach((url)=> {
             chain = chain.then(() => {
                 return new WebScrapper(new Settings(), _self._scraperConfig)
                 .scrape(url, _self._scraperConfig.scraper, (data) => _self.completeScraper(data), 
@@ -125,7 +145,7 @@ class WebPageSerialLauncher implements IWebPageLauncher {
         })
 
         chain.then(() => {
-            winston.info("ending lauchUrls loop");
+            winston.debug("ending lauchUrls loop");
         }).catch((error) => {
             winston.error("ERROR: " + error);
         });
@@ -217,7 +237,7 @@ export class Scraper {
     private buildLauncher(urls: string[], launcherConfig: WebPageLauncherSettings) : IWebPageLauncher {
         var validUrls = this._urlManager.addUrls(urls);
         if (validUrls.length > 0){
-            return new WebPageSerialLauncher(validUrls, this, launcherConfig)
+            return new WebPageLauncher(validUrls, this, launcherConfig)
         }
         return null;            
     }
