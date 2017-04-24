@@ -9,9 +9,10 @@ export class SettingsWeb {
     waitFor: string = "main";
     scraper: Function = function () {
         var x:any = {};
-        x.name = document.title.split("|")[0]; //_pjs$(".col-md-8 h2").text();
+        x.name = document.title.split("|")[0];
         x.contact = {};
         x.contact.email = _pjs$("a.msl_email").attr("href");
+        if (x.contact.email !== undefined) x.contact.email = x.contact.email.replace("mailto:","");
         x.contact.website = _pjs$("a.msl_web").attr("href") || _pjs$("a.msl_facebook").attr("href");
 
         x.url = document.location.href;      
@@ -19,7 +20,7 @@ export class SettingsWeb {
     };
     dataTemplate = {
         name: null,
-        "_type" : "CH",
+        "_type" : "Society",
         url: null,
         contact : {
             country: "GB",
