@@ -4,7 +4,6 @@ import * as winston from "winston";
 
 
 import md5 = require("md5");
-import { create } from "webpage";
 
 module Utils {
     export function isFunction (f) : boolean {
