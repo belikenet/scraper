@@ -1,87 +1,13 @@
-/// <reference types="jquery" />
 import * as fs from "fs";
 import * as winston from "winston";
 import { Settings } from "./settings";
 import { SettingsWeb } from "./settings.web";
+import { Utils, UrlManager } from "./util";
+
 const Nightmare = require ("nightmare");
 
 import * as csv from 'd3-dsv';
 import * as S from "string";
-
-import md5 = require("md5");
-
-module Utils {
-    export function isFunction (f) : boolean {
-        return typeof f === 'function';
-    }
-
-    export function isObject (o) : boolean{
-        return typeof o === 'object';
-    }
-
-    export function funcify(f) {
-        return this.isFunction(f) ? f : function() { return f; };
-    }
-
-    export function isArray(a) : boolean {
-        return Array.isArray(a);
-    }
-
-    export function arrify<T>(a) : T[] {
-        return this.isArray(a) ? a : a ? [a] : [];
-    }
-
-    export function getKeys(o) : string[] {
-        var keys = [];
-        for (var key in o) keys.push(key);
-        return keys;
-    }
-
-    export function extend(obj) : any {
-        Array.prototype.slice.call(arguments, 1).forEach(function(source) {
-            for (var prop in source) {
-                try {
-                    //recursively merge object properties
-                    if ( source[prop].constructor==Object ) {
-                        obj[prop] =this.extend(obj[prop], source[prop]);
-                    } else {
-                        if (source[prop] !== void 0) obj[prop] = source[prop];
-                    }
-                } catch(e) {
-                    // Property in destination object not set; create it and set its value.
-                    obj[prop] = source[prop];
-                }
-            }
-        });
-    }
-
-    export function md5HashFunction (item: any){
-        return md5(JSON.stringify(item));
-    }
-
-    export function idHashFunction (item: any) {
-        return ('id' in item) ? item.id : md5HashFunction(item);
-    }
-
-    export function reflect(promise){
-        return promise.then(function(v){ 
-            return {data:v, status: "resolved" }
-        },
-                            function(e){ return {data:e, status: "rejected" }});
-    }
-
-    export function flatten (object) {
-        return Object.assign( {}, ...function _flatten( objectBit, path = '' ) {  //spread the result into our return object
-            return [].concat(                                                       //concat everything into one level
-            ...Object.keys( objectBit ).map(                                      //iterate over object
-                key => typeof objectBit[ key ] === 'object' && objectBit [ key ] !== null ?                       //check if there is a nested object
-                _flatten( objectBit[ key ], `${ path.length ? path + "." : path }${ key }` ) :              //call itself if there is
-                ( { [ `${ path.length ? path + "." : path }${ key }` ]: objectBit[ key ] } )                //append object with it’s path as key
-            )
-            )
-        }( object ) );
-    };
-}
 
 class WebScrapper {
     page: any;
@@ -145,44 +71,16 @@ class WebScrapper {
     }
 }
 
-class UrlManager {
-    visitedUrls : string[] = [];
-    config: Settings;
-
-    /**
-     *
-     */
-    constructor(config: Settings) {
-        this.config = config;
-    }
-
-    tryAddUrl (url: string) : boolean{
-        var validUrl = this.config.newHashNewPage ? url.split('#')[0] : url;
-        var isValidUrl = (!(this.config.allowRepeatedUrls && url in this.visitedUrls))
-        if (isValidUrl)
-            this.visitedUrls.push(url);
-        return isValidUrl;
-    }
-
-    addUrls (urls: string[]) : string[]{
-        var _self = this;
-        return urls.filter(function(u) { return _self.tryAddUrl(u); });
-    }
-}
-
-class WebPageParallelLauncher {
-
-}
 
 class WebPageSerialLauncher implements IWebPageLauncher {
     private _scraper : Scraper;
     private _scraperConfig : SettingsWeb;
-    readonly launcherConfig : WebPageLauncherConfig;
+    readonly launcherConfig : WebPageLauncherSettings;
     readonly urls: string[];
 
-    constructor(urls: string[], scraper: Scraper, launcherConfig: WebPageLauncherConfig) {
+    constructor(urls: string[], scraper: Scraper, launcherConfig: WebPageLauncherSettings) {
         this._scraper = scraper;
-        this._scraperConfig = scraper.config;
+        this._scraperConfig = scraper.settingsWeb;
         this.launcherConfig = launcherConfig;
         this.urls = urls;
     }
@@ -221,7 +119,7 @@ class WebPageSerialLauncher implements IWebPageLauncher {
         this.urls.slice(0,2).forEach((url)=> {
             chain = chain.then(() => {
                 return new WebScrapper(new Settings(), _self._scraperConfig)
-                .scrape(url, _self._scraperConfig.scraper, (data) => _self.complete(data), 
+                .scrape(url, _self._scraperConfig.scraper, (data) => _self.completeScraper(data), 
                              _self.extractMoreUrls(), (data) => _self.completeMoreUrls(data));
             })
         })
@@ -240,7 +138,7 @@ interface IWebPageLauncher {
     launchUrls();
 }
 
-class WebPageLauncherConfig {
+class WebPageLauncherSettings {
     readonly depth: number;
     readonly title: string;
 
@@ -253,31 +151,31 @@ class WebPageLauncherConfig {
         return " depth " + (depth) + " _";
     }
 
-    buildChild(title?: string) : WebPageLauncherConfig {
+    buildChild(title?: string) : WebPageLauncherSettings {
         var nextDepth = this.depth + 1;
         var nextTitle = title || this.title + this.defaultTitle(nextDepth);
-        return new WebPageLauncherConfig(nextDepth, nextTitle);
+        return new WebPageLauncherSettings(nextDepth, nextTitle);
     }
 }
 
 export class Scraper {
     private launchers: IWebPageLauncher[] = [];
     private items: any[] = [];
-    readonly config: SettingsWeb;
+    readonly settingsWeb: SettingsWeb;
     private _urlManager : UrlManager;
-    private _scraperConfig : Settings;
+    private settings : Settings;
 
     /**
      *
      */
-    constructor(config: SettingsWeb = new SettingsWeb()) {
-        this.config = config;
-        this._scraperConfig = new Settings();
-        this._urlManager = new UrlManager(this._scraperConfig);
+    constructor(settingsWeb: SettingsWeb = new SettingsWeb()) {
+        this.settingsWeb = settingsWeb;
+        this.settings = new Settings();
+        this._urlManager = new UrlManager(this.settings);
     }
 
-    addLauncher(urls: string[], config: WebPageLauncherConfig) : void{
-        var newLauncher = this.buildLauncher(urls, config);
+    addLauncher(urls: string[], launcherSettings: WebPageLauncherSettings) : void{
+        var newLauncher = this.buildLauncher(urls, launcherSettings);
         if (newLauncher)
             this.launchers.push(newLauncher);
     }
@@ -295,8 +193,8 @@ export class Scraper {
     }
 
     private validateDataItem(source: any) : any {
-        var merged = Object.assign({}, this.config.dataTemplate, source);
-        merged.contact = Object.assign({}, this.config.dataTemplate.contact, source.contact)
+        var merged = Object.assign({}, this.settingsWeb.dataTemplate, source);
+        merged.contact = Object.assign({}, this.settingsWeb.dataTemplate.contact, source.contact)
         if (S(merged.name).isEmpty()) merged.notes += "name not found. ";
         else merged.name = S(merged.name).collapseWhitespace().toString();
         if (S(merged.url).isEmpty()) merged.notes += "url not found. ";
@@ -316,7 +214,7 @@ export class Scraper {
         return merged;
     }
 
-    private buildLauncher(urls: string[], launcherConfig: WebPageLauncherConfig) : IWebPageLauncher {
+    private buildLauncher(urls: string[], launcherConfig: WebPageLauncherSettings) : IWebPageLauncher {
         var validUrls = this._urlManager.addUrls(urls);
         if (validUrls.length > 0){
             return new WebPageSerialLauncher(validUrls, this, launcherConfig)
@@ -325,7 +223,7 @@ export class Scraper {
     }
 
     async init () {
-        var firstLauncher = this.buildLauncher(Utils.arrify(this.config.url) as string[], new WebPageLauncherConfig());
+        var firstLauncher = this.buildLauncher(Utils.arrify(this.settingsWeb.url) as string[], new WebPageLauncherSettings());
         if (!firstLauncher)
             return;
 
@@ -335,11 +233,11 @@ export class Scraper {
             await launcher.launchUrls();
         }
 
-        console.log("writing");
-        if (this._scraperConfig.format == "json")
-            fs.writeFile(this._scraperConfig.outFile, JSON.stringify(this.items));
-        if (this._scraperConfig.format == "csv")
-            fs.writeFile(this._scraperConfig.outFile, csv.csvFormat(this.items.map(i => Utils.flatten(i)).filter(i => i)));
+        winston.debug("writing");
+        if (this.settings.format == "json")
+            fs.writeFile(this.settings.outFile, JSON.stringify(this.items));
+        if (this.settings.format == "csv")
+            fs.writeFile(this.settings.outFile, csv.csvFormat(this.items.map(i => Utils.flatten(i)).filter(i => i)));
     }
 
 }
