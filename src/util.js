@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const md5 = require("md5");
+const S = require("string");
 var Utils;
 (function (Utils) {
     function isFunction(f) {
@@ -87,7 +88,9 @@ class UrlManager {
         this.config = config;
     }
     tryAddUrl(url) {
-        var validUrl = this.config.newHashNewPage ? url.split('#')[0] : url;
+        if (S(url).isEmpty())
+            return false;
+        url = this.config.newHashNewPage ? url.split('#')[0] : url;
         var isValidUrl = (!(this.config.allowRepeatedUrls && url in this.visitedUrls));
         if (isValidUrl)
             this.visitedUrls.push(url);
@@ -95,6 +98,8 @@ class UrlManager {
     }
     addUrls(urls) {
         var _self = this;
+        if (urls === null || urls === undefined)
+            return urls;
         return urls.filter(function (u) { return _self.tryAddUrl(u); });
     }
 }

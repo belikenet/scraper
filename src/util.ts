@@ -1,4 +1,5 @@
 import md5 = require("md5");
+import * as S from "string";
 import { Settings } from "./settings";
 
 export module Utils {
@@ -76,7 +77,7 @@ export module Utils {
 
 export class UrlManager {
     visitedUrls : string[] = [];
-    config: Settings;
+    private config: Settings;
 
     /**
      *
@@ -85,8 +86,9 @@ export class UrlManager {
         this.config = config;
     }
 
-    tryAddUrl (url: string) : boolean{
-        var validUrl = this.config.newHashNewPage ? url.split('#')[0] : url;
+    private tryAddUrl (url: string) : boolean {
+        if (S(url).isEmpty()) return false;
+        url = this.config.newHashNewPage ? url.split('#')[0] : url;
         var isValidUrl = (!(this.config.allowRepeatedUrls && url in this.visitedUrls))
         if (isValidUrl)
             this.visitedUrls.push(url);
@@ -95,6 +97,7 @@ export class UrlManager {
 
     addUrls (urls: string[]) : string[]{
         var _self = this;
+        if (urls === null || urls === undefined) return urls;
         return urls.filter(function(u) { return _self.tryAddUrl(u); });
     }
 }
