@@ -212,22 +212,26 @@ export class Scraper {
         }
     }
 
+    private collapse(text:string) : string {
+        return S(text.replace(new RegExp(",", 'g'), " ")).collapseWhitespace().toString();
+    }
+
     private validateDataItem(source: any) : any {
         var merged = Object.assign({}, this.settingsWeb.dataTemplate, source);
         merged.contact = Object.assign({}, this.settingsWeb.dataTemplate.contact, source.contact)
         if (S(merged.name).isEmpty()) merged.notes += "name not found. ";
-        else merged.name = S(merged.name).collapseWhitespace().toString();
+        else merged.name = this.collapse(merged.name);
         if (S(merged.url).isEmpty()) merged.notes += "url not found. ";
         if (S(merged._type).isEmpty()) merged.notes += "type not found. ";
         if (S(merged.contact.country).isEmpty()) merged.notes += "country not found";
-        merged.contact.country = S(merged.contact.country).collapseWhitespace().toString();
-        merged.contact.phone = S(merged.contact.phone).collapseWhitespace().toString();
-        merged.contact.fax = S(merged.contact.fax).collapseWhitespace().toString();
-        merged.contact.email = S(merged.contact.email).collapseWhitespace().toString();
-        merged.contact.website = S(merged.contact.website).collapseWhitespace().toString();
+        merged.contact.country = this.collapse(merged.contact.country);
+        merged.contact.phone = this.collapse(merged.contact.phone);
+        merged.contact.fax = this.collapse(merged.contact.fax);
+        merged.contact.email = this.collapse(merged.contact.email);
+        merged.contact.website = this.collapse(merged.contact.website);
         merged.contact.address = S(merged.contact.address)
                                     .lines()
-                                    .map((l) => S(l).collapseWhitespace())
+                                    .map((l) => this.collapse(l))
                                     .filter(i => !S(i).isEmpty())
                                     .join(", ");
 
