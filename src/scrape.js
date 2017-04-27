@@ -9,6 +9,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs = require("fs");
+const path = require("path");
+const url_1 = require("url");
 const winston = require("winston");
 const settings_1 = require("./settings");
 const settings_web_1 = require("./settings.web");
@@ -168,8 +170,9 @@ class Scraper {
         var self = this;
         // check for ignoreDuplicates
         if (item) {
-            item = this.validateDataItem(item);
-            this.items = this.items.concat(item);
+            var items = util_1.Utils.isArray(item) ? item : [item];
+            items = items.map((x) => this.validateDataItem(x));
+            this.items = this.items.concat(items);
             // apply for flattening items
             this.items = [].concat(this.items);
         }
@@ -220,11 +223,28 @@ class Scraper {
                 yield launcher.launchUrls();
             }
             winston.debug("writing");
+            // exportSettings checks & create profile folder
+            this.exportSettings();
+            var outputFile = path.resolve(this.defaultOutputFolder(), this.settings.outFile);
             if (this.settings.format == "json")
-                fs.writeFile(this.settings.outFile, JSON.stringify(this.items));
+                fs.writeFile(outputFile, JSON.stringify(this.items));
             if (this.settings.format == "csv")
-                fs.writeFile(this.settings.outFile, csv.csvFormat(this.items.map(i => util_1.Utils.flatten(i)).filter(i => i)));
+                fs.writeFile(outputFile, csv.csvFormat(this.items.map(i => util_1.Utils.flatten(i)).filter(i => i)));
         });
+    }
+    defaultOutputFolder() {
+        var profileFolder = new url_1.URL(this.settingsWeb.url).hostname.replace("www.", "");
+        return path.resolve(this.settings.outFolder, profileFolder);
+    }
+    copyFile(sourceFile, targetFile) {
+        fs.createReadStream(sourceFile).pipe(fs.createWriteStream(targetFile));
+    }
+    exportSettings(profileFolder = this.defaultOutputFolder()) {
+        if (!fs.existsSync(profileFolder)) {
+            fs.mkdirSync(profileFolder);
+        }
+        this.copyFile(".//src//settings.ts", path.resolve(profileFolder, "settings.ts"));
+        this.copyFile(".//src//settings.web.ts", path.resolve(profileFolder, "settings.web.ts"));
     }
 }
 exports.Scraper = Scraper;

@@ -207,8 +207,9 @@ export class Scraper {
         // check for ignoreDuplicates
         if (item)
         {
-            item = this.validateDataItem(item);
-            this.items = this.items.concat(item);
+            var items = Utils.isArray(item) ? item : [item];
+            items = items.map((x) => this.validateDataItem(x));
+            this.items = this.items.concat(items);
             // apply for flattening items
             this.items = [].concat(this.items);
         }
