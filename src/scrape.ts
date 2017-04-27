@@ -1,4 +1,6 @@
 import * as fs from "fs";
+import * as path from "path";
+import { URL } from "url";
 import * as winston from "winston";
 import { Settings } from "./settings";
 import { SettingsWeb } from "./settings.web";
@@ -258,10 +260,32 @@ export class Scraper {
         }
 
         winston.debug("writing");
+        // exportSettings checks & create profile folder
+        this.exportSettings();
+        var outputFile = path.resolve (this.defaultOutputFolder(), this.settings.outFile);
         if (this.settings.format == "json")
-            fs.writeFile(this.settings.outFile, JSON.stringify(this.items));
+            fs.writeFile(outputFile, JSON.stringify(this.items));
         if (this.settings.format == "csv")
-            fs.writeFile(this.settings.outFile, csv.csvFormat(this.items.map(i => Utils.flatten(i)).filter(i => i)));
+            fs.writeFile(outputFile, csv.csvFormat(this.items.map(i => Utils.flatten(i)).filter(i => i)));
+    }
+
+    private defaultOutputFolder() : string {
+        
+        var profileFolder = new URL(this.settingsWeb.url).hostname.replace("www.","");
+        return  path.resolve(this.settings.outFolder, profileFolder)
+    }
+
+    private copyFile(sourceFile: string, targetFile: string){
+        fs.createReadStream(sourceFile).pipe(fs.createWriteStream(targetFile));
+    }
+
+    exportSettings (profileFolder : string = this.defaultOutputFolder()) {
+        if (!fs.existsSync(profileFolder)){
+            fs.mkdirSync(profileFolder);
+        }
+
+        this.copyFile (".//src//settings.ts",path.resolve(profileFolder, "settings.ts"));
+        this.copyFile (".//src//settings.web.ts",path.resolve(profileFolder, "settings.web.ts"));
     }
 
 }

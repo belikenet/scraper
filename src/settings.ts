@@ -6,6 +6,7 @@ export class Settings {
     timeoutInterval: number = 100;
     timeoutLimit: number = 3000;
     format: string = "csv";
+    outFolder: string = ".//profiles";
     logFile: string = "output.txt";
     outFile: string = "output.csv";
     newHashNewPage: boolean = true;

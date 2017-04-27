@@ -9,6 +9,7 @@ class Settings {
         this.timeoutInterval = 100;
         this.timeoutLimit = 3000;
         this.format = "csv";
+        this.outFolder = ".//profiles";
         this.logFile = "output.txt";
         this.outFile = "output.csv";
         this.newHashNewPage = true;
