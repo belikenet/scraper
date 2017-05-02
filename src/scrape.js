@@ -16,6 +16,7 @@ const settings_1 = require("./settings");
 const settings_web_1 = require("./settings.web");
 const util_1 = require("./util");
 const Nightmare = require("nightmare");
+const vo = require("vo");
 const csv = require("d3-dsv");
 const S = require("string");
 class WebScrapper {
@@ -30,7 +31,7 @@ class WebScrapper {
         let _self = this;
         var thens = [];
         winston.debug("Opening " + url);
-        var nightmare = Nightmare({ show: false, webPreferences: { images: false } });
+        var nightmare = Nightmare({ show: false, pollInterval: 800, webPreferences: { images: false } });
         var item = null;
         function createOrUpdateItemNotes(notes) {
             if (item != null)
@@ -41,48 +42,35 @@ class WebScrapper {
             else
                 item = { url: url, notes: notes };
         }
-        var then = nightmare.goto(url)
-            .then(() => {
+        function* workflow() {
+            yield nightmare.goto(url);
             if (_self.scraperConfig.injectJQuery) {
-                return nightmare.inject("js", "client\\jquery.js")
+                yield nightmare.inject("js", "client\\jquery.js")
                     .evaluate(Function("window._pjs$ = jQuery.noConflict(true);"))
                     .inject("js", "client\\pjscrape_client.js")
                     .wait(Function("return window._pjs.ready;"));
             }
-            return new Promise((resolve, reject) => resolve(false));
-        }).then(() => {
             if (!S(_self.scraperConfig.waitFor).isEmpty())
-                return nightmare.wait(_self.scraperConfig.waitFor);
-            return new Promise((resolve, reject) => resolve(false));
-        }).then(() => {
+                yield nightmare.wait(_self.scraperConfig.waitFor);
             if (dataScraper != null)
-                return nightmare.evaluate(dataScraper);
-            return new Promise((resolve, reject) => resolve(null));
-        }).then(function (data) {
-            item = data;
-            //if (data != null)
-            //    complete(data);
-            if (urlScraper != null)
-                return nightmare.evaluate(urlScraper);
-            return new Promise((resolve, reject) => resolve(null));
-        }).then((data) => {
-            if (data != null) {
+                item = yield nightmare.evaluate(dataScraper);
+            if (urlScraper != null) {
+                var data = yield vo(urlScraper(nightmare));
                 urlComplete(data);
                 createOrUpdateItemNotes("INDEX page. ");
             }
-            return nightmare.end();
-        }).then(() => {
+            yield nightmare.end();
             winston.debug("scraper end");
-        }).catch((error) => {
+        }
+        return vo(workflow)
+            .catch((error) => {
             winston.error(error);
             createOrUpdateItemNotes(`${error} `);
-        }).then(() => {
+        })
+            .then(() => {
             if (item != null)
                 complete(item);
-        }).catch((error) => {
-            winston.error(`${error}`);
         });
-        return then;
     }
 }
 class WebPageLauncher {
@@ -103,11 +91,12 @@ class WebPageLauncher {
             if (typeof validMoreUrls == 'string') {
                 if (validMoreUrls.length == 0)
                     return null;
-                validMoreUrls = "return _pjs.getAnchorUrls('" + this._scraperConfig.moreUrls + "')";
+                //validMoreUrls = "return _pjs.getAnchorUrls('" + this._scraperConfig.moreUrls + "')";
+                validMoreUrls = `var ___x= []; document.querySelectorAll("${this._scraperConfig.moreUrls}").forEach((e) => ___x.push(e.href)); return ___x;`;
                 return Function(validMoreUrls);
             }
             else
-                return this._scraperConfig.moreUrls;
+                return this._scraperConfig.moreUrls(this.launcherConfig.depth, this._scraperConfig.url);
         }
         return null;
     }
@@ -115,9 +104,14 @@ class WebPageLauncher {
         if (moreUrls) {
             if (moreUrls.length) {
                 winston.debug('Found ' + moreUrls.length + ' additional urls to scrape');
+                if (this._scraperConfig.exportUrls)
+                    this.exportMoreUrls(moreUrls);
                 this._scraper.addLauncher(moreUrls, this.launcherConfig.buildChild());
             }
         }
+    }
+    exportMoreUrls(moreUrls) {
+        this._scraper.exportOutputJson(moreUrls, "urls.json");
     }
     launchUrls() {
         var _self = this;
@@ -138,7 +132,7 @@ class WebPageLauncher {
 }
 class WebPageLauncherSettings {
     constructor(depth, title) {
-        this.depth = depth || 0;
+        this.depth = depth || 1;
         this.title = title || this.defaultTitle(this.depth);
     }
     defaultTitle(depth) {
@@ -151,9 +145,6 @@ class WebPageLauncherSettings {
     }
 }
 class Scraper {
-    /**
-     *
-     */
     constructor(settingsWeb = new settings_web_1.SettingsWeb()) {
         this.launchers = [];
         this.items = [];
@@ -192,7 +183,7 @@ class Scraper {
         if (S(merged._type).isEmpty())
             merged.notes += "type not found. ";
         if (S(merged.contact.country).isEmpty())
-            merged.notes += "country not found";
+            merged.notes += "country not found. ";
         merged.contact.country = this.collapse(merged.contact.country);
         merged.contact.phone = this.collapse(merged.contact.phone);
         merged.contact.fax = this.collapse(merged.contact.fax);
@@ -214,6 +205,8 @@ class Scraper {
     }
     init() {
         return __awaiter(this, void 0, void 0, function* () {
+            //var urls = this.importJson("urls2.json");
+            //var firstLauncher = this.buildLauncher(urls, new WebPageLauncherSettings());
             var firstLauncher = this.buildLauncher(util_1.Utils.arrify(this.settingsWeb.url), new WebPageLauncherSettings());
             if (!firstLauncher)
                 return;
@@ -222,15 +215,27 @@ class Scraper {
             while (launcher = this.launchers.shift()) {
                 yield launcher.launchUrls();
             }
-            winston.debug("writing");
-            // exportSettings checks & create profile folder
-            this.exportSettings();
-            var outputFile = path.resolve(this.defaultOutputFolder(), this.settings.outFile);
-            if (this.settings.format == "json")
-                fs.writeFile(outputFile, JSON.stringify(this.items));
-            if (this.settings.format == "csv")
-                fs.writeFile(outputFile, csv.csvFormat(this.items.map(i => util_1.Utils.flatten(i)).filter(i => i)));
+            this.exportOutput();
         });
+    }
+    exportOutput() {
+        winston.debug("writing");
+        // exportSettings checks & create profile folder
+        this.exportSettings();
+        var outputFile = path.resolve(this.defaultOutputFolder(), this.settings.outFile);
+        if (this.settings.format == "json")
+            fs.writeFile(outputFile, JSON.stringify(this.items));
+        if (this.settings.format == "csv")
+            fs.writeFile(outputFile, csv.csvFormat(this.items.map(i => util_1.Utils.flatten(i)).filter(i => i)));
+    }
+    exportOutputJson(data, filename) {
+        var outputFile = path.resolve(this.defaultOutputFolder(), filename);
+        fs.writeFile(outputFile, JSON.stringify(data));
+    }
+    importJson(filename) {
+        var inputFile = path.resolve(this.defaultOutputFolder(), filename);
+        var content = fs.readFileSync(inputFile, "UTF8");
+        return JSON.parse(content);
     }
     defaultOutputFolder() {
         var profileFolder = new url_1.URL(this.settingsWeb.url).hostname.replace("www.", "");

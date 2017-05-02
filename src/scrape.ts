@@ -7,6 +7,7 @@ import { SettingsWeb } from "./settings.web";
 import { Utils, UrlManager } from "./util";
 
 const Nightmare = require ("nightmare");
+const vo = require("vo");
 
 import * as csv from 'd3-dsv';
 import * as S from "string";
@@ -24,13 +25,13 @@ class WebScrapper {
     }
 
 
-    scrape (url: string, dataScraper: Function, complete: (any?)=>void, urlScraper: () => void, urlComplete: (any?)=>void)
+    scrape (url: string, dataScraper: Function, complete: (any?)=>void, urlScraper: (any) => void, urlComplete: (any?)=>void)
     {
         let _self = this;
         var thens : Promise<any>[] = [];
         winston.debug("Opening " + url);
 
-        var nightmare = Nightmare({show: false, webPreferences: {images: false}});
+        var nightmare = Nightmare({show: false, pollInterval: 800, webPreferences: {images: false}});
 
         var item : any = null;
         function createOrUpdateItemNotes(notes: string) {
@@ -41,55 +42,42 @@ class WebScrapper {
                 item = {url: url, notes: notes};
         }
 
-        var then = nightmare.goto(url)
-        .then (() => {
+        function * workflow () {
+            yield nightmare.goto(url);
             if (_self.scraperConfig.injectJQuery)
             {
-            return nightmare.inject("js", "client\\jquery.js")
+                yield nightmare.inject("js", "client\\jquery.js")
                     .evaluate(Function("window._pjs$ = jQuery.noConflict(true);"))
                     .inject("js", "client\\pjscrape_client.js")
                     .wait(Function("return window._pjs.ready;"));
             }
-            return new Promise((resolve, reject) => resolve(false));
-        }).then(() => {
             if (!S(_self.scraperConfig.waitFor).isEmpty())
-                return nightmare.wait(_self.scraperConfig.waitFor);
+                yield nightmare.wait(_self.scraperConfig.waitFor);
 
-            return new Promise((resolve,reject) => resolve(false));
-        }).then(() => {
             if (dataScraper != null)
-                return nightmare.evaluate(dataScraper);
+                item = yield nightmare.evaluate(dataScraper);
+                
+            if (urlScraper != null){
+                var data = yield vo(urlScraper(nightmare));
 
-            return new Promise((resolve,reject) => resolve(null));                        
-        }).then(function(data) {
-            item = data;
-            //if (data != null)
-            //    complete(data);
-             
-            if (urlScraper != null)
-                return nightmare.evaluate(urlScraper);
-            return new Promise((resolve,reject) => resolve(null));
-        }).then((data) => {
-            if (data != null)
-            {
                 urlComplete(data);
                 createOrUpdateItemNotes("INDEX page. ")
             }
 
-            return nightmare.end();
-        }).then(() => {
+            yield nightmare.end();
+
             winston.debug("scraper end");
-        }).catch((error) => {
-            winston.error(error);
-            createOrUpdateItemNotes(`${error} `);
-        }).then(() => {
-            if (item != null)
-                complete(item);
-        }).catch((error) => {
-            winston.error(`${error}`);
-        });
-        
-        return then;
+        }
+
+        return vo(workflow)
+            .catch((error) => {
+                winston.error(error);
+                createOrUpdateItemNotes(`${error} `);
+            })
+            .then (() => {
+                if (item != null)
+                    complete(item);
+            });
     }
 }
 
@@ -118,10 +106,11 @@ class WebPageLauncher implements IWebPageLauncher {
             let validMoreUrls = this._scraperConfig.moreUrls;
             if (typeof validMoreUrls == 'string') {
                 if (validMoreUrls.length == 0) return null;
-                validMoreUrls = "return _pjs.getAnchorUrls('" + this._scraperConfig.moreUrls + "')";
+                //validMoreUrls = "return _pjs.getAnchorUrls('" + this._scraperConfig.moreUrls + "')";
+                validMoreUrls = `var ___x= []; document.querySelectorAll("${this._scraperConfig.moreUrls}").forEach((e) => ___x.push(e.href)); return ___x;`;
                 return Function (validMoreUrls);
             } else 
-                return this._scraperConfig.moreUrls;
+                return this._scraperConfig.moreUrls(this.launcherConfig.depth, this._scraperConfig.url);
         }
         return null;
     }
@@ -130,9 +119,16 @@ class WebPageLauncher implements IWebPageLauncher {
             if (moreUrls) {
                 if (moreUrls.length) {
                     winston.debug('Found ' + moreUrls.length + ' additional urls to scrape');
+                    if (this._scraperConfig.exportUrls)
+                        this.exportMoreUrls(moreUrls);
                     this._scraper.addLauncher(moreUrls, this.launcherConfig.buildChild());
                 }
             }
+    }
+
+    private exportMoreUrls(moreUrls: any)
+    {
+        this._scraper.exportOutputJson(moreUrls, "urls.json");
     }
 
     launchUrls() {
@@ -165,7 +161,7 @@ class WebPageLauncherSettings {
     readonly title: string;
 
     constructor(depth?: number, title?: string) {
-        this.depth = depth || 0;
+        this.depth = depth || 1;
         this.title = title || this.defaultTitle(this.depth);
     }
 
@@ -187,9 +183,6 @@ export class Scraper {
     private _urlManager : UrlManager;
     private settings : Settings;
 
-    /**
-     *
-     */
     constructor(settingsWeb: SettingsWeb = new SettingsWeb()) {
         this.settingsWeb = settingsWeb;
         this.settings = new Settings();
@@ -226,7 +219,7 @@ export class Scraper {
         else merged.name = this.collapse(merged.name);
         if (S(merged.url).isEmpty()) merged.notes += "url not found. ";
         if (S(merged._type).isEmpty()) merged.notes += "type not found. ";
-        if (S(merged.contact.country).isEmpty()) merged.notes += "country not found";
+        if (S(merged.contact.country).isEmpty()) merged.notes += "country not found. ";
         merged.contact.country = this.collapse(merged.contact.country);
         merged.contact.phone = this.collapse(merged.contact.phone);
         merged.contact.fax = this.collapse(merged.contact.fax);
@@ -250,6 +243,8 @@ export class Scraper {
     }
 
     async init () {
+        //var urls = this.importJson("urls2.json");
+        //var firstLauncher = this.buildLauncher(urls, new WebPageLauncherSettings());
         var firstLauncher = this.buildLauncher(Utils.arrify(this.settingsWeb.url) as string[], new WebPageLauncherSettings());
         if (!firstLauncher)
             return;
@@ -260,6 +255,10 @@ export class Scraper {
             await launcher.launchUrls();
         }
 
+        this.exportOutput();
+    }
+
+    private exportOutput() {
         winston.debug("writing");
         // exportSettings checks & create profile folder
         this.exportSettings();
@@ -270,8 +269,18 @@ export class Scraper {
             fs.writeFile(outputFile, csv.csvFormat(this.items.map(i => Utils.flatten(i)).filter(i => i)));
     }
 
-    private defaultOutputFolder() : string {
-        
+    public exportOutputJson(data: any, filename: string){
+        var outputFile = path.resolve (this.defaultOutputFolder(), filename);
+        fs.writeFile(outputFile, JSON.stringify(data));
+    }
+
+    private importJson(filename: string){
+        var inputFile = path.resolve (this.defaultOutputFolder(), filename);
+        var content = fs.readFileSync(inputFile, "UTF8");
+        return JSON.parse(content);
+    }
+
+    private defaultOutputFolder() : string {        
         var profileFolder = new URL(this.settingsWeb.url).hostname.replace("www.","");
         return  path.resolve(this.settings.outFolder, profileFolder)
     }
