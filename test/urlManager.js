@@ -2,9 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const util_1 = require("../src/util");
 const settings_1 = require("../src/settings");
-const chai = require("chai");
-const expect = chai.expect;
-const should = chai.should();
+//import * as chai from "chai";
+//import * as sinonjs from "sinon";
+//const expect = chai.expect;
+//const should = chai.should();
 class UrlManagerFactory {
     static simple(urls = null, defaultSettings) {
         var settings = SettingsFactory.empty(defaultSettings);

@@ -1,0 +1,121 @@
+[{
+    "name": "Araluen Christian College",
+    "_type": "School",
+    "url": "http://www.privateschoolsdirectory.com.au/3322/araluen-christian-college-alice-springs",
+    "contact": {
+        "country": "AU",
+        "email": "admin.acc@ntschools.net",
+        "phone": "08 8955 0121",
+        "fax": "08 8955 0060",
+        "address": "10 Blain Street, Alice Springs NT 0870",
+        "website": "http://www.acc.nt.edu.au/index.cfm"
+    }
+}, {
+    "name": "Marrara Christian College",
+    "_type": "School",
+    "url": "http://www.privateschoolsdirectory.com.au/3398/marrara-christian-college-marrara",
+    "contact" : {
+        "country": "AU",
+        "email": "admin.mcc@ntschools.net",
+        "phone": "08 8920 2000",
+        "fax": "08 8920 2001",
+        "address": "McMillans Road, Marrara NT 0812",
+        "website": "http://www.mcc.nt.edu.au"
+    }
+}, {
+    "name": "O'Loughlin Catholic College",
+    "_type": "School",
+    "url": "http://www.privateschoolsdirectory.com.au/3434/oloughlin-catholic-college-karama",
+    "contact" : {
+        "country": "AU",
+        "email": "secretary.oloughlin@nt.catholic.edu.au",
+        "phone": "08 8945 1277",
+        "fax": "08 8927 7140",
+        "address": "Mueller Road, Karama NT 0812",
+        "website": "http://www.oloughlin.nt.edu.au"
+    }
+}, {
+    "name": "Palmerston Christian School",
+    "_type": "School",
+    "url": "http://www.privateschoolsdirectory.com.au/3439/palmerston-christian-school-palmerston",
+    "contact" : {
+        "country": "AU",
+        "email": "admin.pcs@ntschools.net",
+        "phone": "08 8932 3377",
+        "fax": "08 8932 3440",
+        "address": "50 Waler Road, Palmerston NT 0830",
+        "website": "http://www.pcs.nt.edu.au"
+    }
+}, {
+    "name": "Sattler Christian College",
+    "_type": "School",
+    "url": "http://www.privateschoolsdirectory.com.au/3388/sattler-christian-college-humpty-doo",
+    "contact" : {
+        "country": "AU",
+        "email": "admin@lcs.nt.edu.au",
+        "phone": "08 8983 1268",
+        "fax": "08 8983 1297",
+        "address": "PO Box 546, Humpty Doo NT 0836",
+        "website": "http://www.ntcsa.nt.edu.au"
+    }
+}, {
+    "name": "St John's Catholic College",
+    "_type": "School",
+    "url": "http://www.privateschoolsdirectory.com.au/3457/st-johns-catholic-college-darwin",
+    "contact" : {
+        "country": "AU",
+        "email": "admin.stjohns@nt.catholic.edu.au",
+        "phone": "08 8982 2222",
+        "fax": "08 8982 2204",
+        "address": "10-54 Salonika Street, Darwin NT 0800",
+        "website": "http://www.stjohnsnt.catholic.edu.au"
+    }
+}, {
+    "name": "St Joseph's Catholic College",
+    "_type": "School",
+    "url": "http://www.privateschoolsdirectory.com.au/3458/st-josephs-catholic-college-katherine",
+    "contact" : {
+        "country": "AU",
+        "email": "admin.stjosephs@nt.catholic.edu.au",
+        "phone": "08 8972 3555",
+        "fax": "08 8972 3701",
+        "address": "Cnr Maluka Road and Chambers Drive, PO Box 535, Katherine NT 0850",
+        "website": "http://www.sjcckatherine.nt.edu.au"
+    }
+}, {
+    "name": "Good Shepherd Lutheran College - Palmerston",
+    "_type": "School",
+    "url": "http://www.privateschoolsdirectory.com.au/3358/good-shepherd-lutheran-college-palmerston-palmerston",
+    "contact" : {
+        "country": "AU",
+        "email": "",
+        "phone": "08 8983 0300",
+        "fax": "",
+        "address": "Good Shepherd Lutheran College - Palmerston, Cnr Emery Ave and Temple Terrace, Palmerston NT0830",
+        "website": ""
+    }
+}, {
+    "name": "Holy Family Primary School",
+    "_type": "School",
+    "url": "http://www.privateschoolsdirectory.com.au/3365/holy-family-primary-school-karama",
+    "contact" : {
+        "country": "AU",
+        "email": "",
+        "phone": "08 8927 6188",
+        "fax": "",
+        "address": "Holy Family Primary School, Calytrix Road, Karama NT0812",
+        "website": ""
+    }
+}, {
+    "name": "Kormilda College",
+    "_type": "School",
+    "url": "http://www.privateschoolsdirectory.com.au/3381/kormilda-college-berrimah",
+    "contact" : {
+        "country": "AU",
+        "email": "",
+        "phone": "08 8922 1611",
+        "fax": "",
+        "address": "Kormilda College, Berrimah Road, Berrimah NT0828",
+        "website": ""
+    }
+}]

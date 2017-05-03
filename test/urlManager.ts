@@ -1,10 +1,10 @@
 import {UrlManager} from "../src/util";
 import {Settings} from "../src/settings";
 
-import * as chai from "chai";
-import * as sinonjs from "sinon";
-const expect = chai.expect;
-const should = chai.should();
+//import * as chai from "chai";
+//import * as sinonjs from "sinon";
+//const expect = chai.expect;
+//const should = chai.should();
 
 class UrlManagerFactory {
     static simple(urls: string[] = null, defaultSettings?: any) {
