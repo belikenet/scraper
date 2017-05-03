@@ -5,6 +5,7 @@ import * as winston from "winston";
 import { Settings } from "./settings";
 import { SettingsWeb } from "./settings.web";
 import { Utils, UrlManager } from "./util";
+import * as Enumerable from "linq";
 
 const Nightmare = require ("nightmare");
 const vo = require("vo");
@@ -142,10 +143,10 @@ class WebPageLauncher implements IWebPageLauncher {
             })
         })
 
-        chain.then(() => {
-            winston.debug("ending lauchUrls loop");
-        }).catch((error) => {
+        chain.catch((error) => {
             winston.error("ERROR: " + error);
+        }).then(() => {
+            winston.debug("ending lauchUrls loop");
         });
 
         return chain;
@@ -243,9 +244,8 @@ export class Scraper {
     }
 
     async init () {
-        //var urls = this.importJson("urls2.json");
-        //var firstLauncher = this.buildLauncher(urls, new WebPageLauncherSettings());
-        var firstLauncher = this.buildLauncher(Utils.arrify(this.settingsWeb.url) as string[], new WebPageLauncherSettings());
+        var urls = this.processInputUrls(this.settingsWeb.url);
+        var firstLauncher = this.buildLauncher(urls, new WebPageLauncherSettings());
         if (!firstLauncher)
             return;
 
@@ -296,6 +296,37 @@ export class Scraper {
 
         this.copyFile (".//src//settings.ts",path.resolve(profileFolder, "settings.ts"));
         this.copyFile (".//src//settings.web.ts",path.resolve(profileFolder, "settings.web.ts"));
+    }
+
+    processInputUrls (urls: any) : string[] {
+        // urls is string
+        if (typeof urls === "string")
+        {
+            // single url
+            if (urls.startsWith("http://")||urls.startsWith("https://"))
+                return Utils.arrify(urls) as string[];
+            // file
+            else {
+                var ext = path.extname(urls);
+                if (ext=="json" || ext == "csv")
+                {
+                    var inputFile = path.resolve (this.defaultOutputFolder(), urls);
+                    //TODO: check if file exists
+                    var content = fs.readFileSync(inputFile, "UTF8");
+                    urls = ext == "json" ? JSON.parse(content) : csv.csvParse(content);
+                }
+            }
+        }
+
+        if (Array.isArray(urls)){
+            if (urls.length > 0)
+                if (typeof urls[0] === "string")
+                    return urls;
+                else
+                    return Enumerable.from(urls as any[]).select((x) => x.url).toArray();
+        }
+
+        return null;
     }
 
 }

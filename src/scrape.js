@@ -15,6 +15,7 @@ const winston = require("winston");
 const settings_1 = require("./settings");
 const settings_web_1 = require("./settings.web");
 const util_1 = require("./util");
+const Enumerable = require("linq");
 const Nightmare = require("nightmare");
 const vo = require("vo");
 const csv = require("d3-dsv");
@@ -122,10 +123,10 @@ class WebPageLauncher {
                     .scrape(url, _self._scraperConfig.scraper, (data) => _self.completeScraper(data), _self.extractMoreUrls(), (data) => _self.completeMoreUrls(data));
             });
         });
-        chain.then(() => {
-            winston.debug("ending lauchUrls loop");
-        }).catch((error) => {
+        chain.catch((error) => {
             winston.error("ERROR: " + error);
+        }).then(() => {
+            winston.debug("ending lauchUrls loop");
         });
         return chain;
     }
@@ -205,9 +206,8 @@ class Scraper {
     }
     init() {
         return __awaiter(this, void 0, void 0, function* () {
-            //var urls = this.importJson("urls2.json");
-            //var firstLauncher = this.buildLauncher(urls, new WebPageLauncherSettings());
-            var firstLauncher = this.buildLauncher(util_1.Utils.arrify(this.settingsWeb.url), new WebPageLauncherSettings());
+            var urls = this.processInputUrls(this.settingsWeb.url);
+            var firstLauncher = this.buildLauncher(urls, new WebPageLauncherSettings());
             if (!firstLauncher)
                 return;
             this.launchers.push(firstLauncher);
@@ -250,6 +250,31 @@ class Scraper {
         }
         this.copyFile(".//src//settings.ts", path.resolve(profileFolder, "settings.ts"));
         this.copyFile(".//src//settings.web.ts", path.resolve(profileFolder, "settings.web.ts"));
+    }
+    processInputUrls(urls) {
+        // urls is string
+        if (typeof urls === "string") {
+            // single url
+            if (urls.startsWith("http://") || urls.startsWith("https://"))
+                return util_1.Utils.arrify(urls);
+            else {
+                var ext = path.extname(urls);
+                if (ext == "json" || ext == "csv") {
+                    var inputFile = path.resolve(this.defaultOutputFolder(), urls);
+                    //TODO: check if file exists
+                    var content = fs.readFileSync(inputFile, "UTF8");
+                    urls = ext == "json" ? JSON.parse(content) : csv.csvParse(content);
+                }
+            }
+        }
+        if (Array.isArray(urls)) {
+            if (urls.length > 0)
+                if (typeof urls[0] === "string")
+                    return urls;
+                else
+                    return Enumerable.from(urls).select((x) => x.url).toArray();
+        }
+        return null;
     }
 }
 exports.Scraper = Scraper;
