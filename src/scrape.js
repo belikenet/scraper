@@ -21,57 +21,59 @@ const vo = require("vo");
 const csv = require("d3-dsv");
 const S = require("string");
 class WebScrapper {
-    /**
-     *
-     */
     constructor(config, scraperConfig) {
         this.config = config;
         this.scraperConfig = scraperConfig;
     }
-    scrape(url, dataScraper, complete, urlScraper, urlComplete) {
+    *scrape(urls, dataScraper, complete, urlScraper, urlComplete) {
         let _self = this;
-        var thens = [];
-        winston.debug("Opening " + url);
-        var nightmare = Nightmare({ show: false, pollInterval: 800, webPreferences: { images: false } });
-        var item = null;
-        function createOrUpdateItemNotes(notes) {
-            if (item != null)
-                if (item.notes === undefined)
-                    item.notes = notes;
+        var nightmare = Nightmare({ show: true, pollInterval: 800, webPreferences: { images: false } });
+        var scrapers = [];
+        scrapers = urls.map((url) => workflow(url));
+        for (var i in urls) {
+            yield workflow(urls[i]);
+        }
+        yield nightmare.end();
+        function* workflow(url) {
+            function createOrUpdateItemNotes(notes) {
+                if (item != null)
+                    if (item.notes === undefined)
+                        item.notes = notes;
+                    else
+                        item.notes += notes;
                 else
-                    item.notes += notes;
-            else
-                item = { url: url, notes: notes };
-        }
-        function* workflow() {
-            yield nightmare.goto(url);
-            if (_self.scraperConfig.injectJQuery) {
-                yield nightmare.inject("js", "client\\jquery.js")
-                    .evaluate(Function("window._pjs$ = jQuery.noConflict(true);"))
-                    .inject("js", "client\\pjscrape_client.js")
-                    .wait(Function("return window._pjs.ready;"));
+                    item = { url: url, notes: notes };
             }
-            if (!S(_self.scraperConfig.waitFor).isEmpty())
-                yield nightmare.wait(_self.scraperConfig.waitFor);
-            if (dataScraper != null)
-                item = yield nightmare.evaluate(dataScraper);
-            if (urlScraper != null) {
-                var data = yield vo(urlScraper(nightmare));
-                urlComplete(data);
-                createOrUpdateItemNotes("INDEX page. ");
+            var item = null;
+            function* subWorkflow() {
+                winston.debug("Opening " + url);
+                yield nightmare.goto(url);
+                if (_self.scraperConfig.injectJQuery) {
+                    yield nightmare.inject("js", "client\\jquery.js")
+                        .evaluate(Function("window._pjs$ = jQuery.noConflict(true);"))
+                        .inject("js", "client\\pjscrape_client.js")
+                        .wait(Function("return window._pjs.ready;"));
+                }
+                if (!S(_self.scraperConfig.waitFor).isEmpty())
+                    yield nightmare.wait(_self.scraperConfig.waitFor);
+                if (dataScraper != null)
+                    item = yield nightmare.evaluate(dataScraper);
+                if (urlScraper != null) {
+                    var data = yield vo(urlScraper(nightmare));
+                    urlComplete(data);
+                    createOrUpdateItemNotes("INDEX page. ");
+                }
             }
-            yield nightmare.end();
-            winston.debug("scraper end");
+            yield vo(subWorkflow)
+                .catch((error) => {
+                winston.error(error);
+                createOrUpdateItemNotes(`${error} `);
+            })
+                .then(() => {
+                if (item != null)
+                    complete(item);
+            });
         }
-        return vo(workflow)
-            .catch((error) => {
-            winston.error(error);
-            createOrUpdateItemNotes(`${error} `);
-        })
-            .then(() => {
-            if (item != null)
-                complete(item);
-        });
     }
 }
 class WebPageLauncher {
@@ -116,19 +118,13 @@ class WebPageLauncher {
     }
     launchUrls() {
         var _self = this;
-        var chain = Promise.resolve();
-        this.urls.forEach((url) => {
-            chain = chain.then(() => {
-                return new WebScrapper(new settings_1.Settings(), _self._scraperConfig)
-                    .scrape(url, _self._scraperConfig.scraper, (data) => _self.completeScraper(data), _self.extractMoreUrls(), (data) => _self.completeMoreUrls(data));
-            });
-        });
-        chain.catch((error) => {
+        return vo(util_1.Utils.binarify(this.urls, _self._scraperConfig.instancesCount)
+            .map((bin) => new WebScrapper(new settings_1.Settings(), _self._scraperConfig)
+            .scrape(bin, _self._scraperConfig.scraper, (data) => _self.completeScraper(data), _self.extractMoreUrls(), (data) => _self.completeMoreUrls(data)))).catch((error) => {
             winston.error("ERROR: " + error);
         }).then(() => {
             winston.debug("ending lauchUrls loop");
         });
-        return chain;
     }
 }
 class WebPageLauncherSettings {
@@ -215,7 +211,7 @@ class Scraper {
             while (launcher = this.launchers.shift()) {
                 yield launcher.launchUrls();
             }
-            this.exportOutput();
+            //this.exportOutput();
         });
     }
     exportOutput() {
@@ -238,7 +234,8 @@ class Scraper {
         return JSON.parse(content);
     }
     defaultOutputFolder() {
-        var profileFolder = new url_1.URL(this.settingsWeb.url).hostname.replace("www.", "");
+        var profileFolder = new url_1.URL(Array.isArray(this.settingsWeb.url) ? this.settingsWeb.url[0] : this.settingsWeb.url)
+            .hostname.replace("www.", "");
         return path.resolve(this.settings.outFolder, profileFolder);
     }
     copyFile(sourceFile, targetFile) {

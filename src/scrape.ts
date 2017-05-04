@@ -17,68 +17,73 @@ class WebScrapper {
     page: any;
     config: Settings;
     scraperConfig: SettingsWeb;
-    /**
-     *
-     */
+
     constructor(config: Settings, scraperConfig?: SettingsWeb) {
         this.config = config;
         this.scraperConfig = scraperConfig;
     }
 
 
-    scrape (url: string, dataScraper: Function, complete: (any?)=>void, urlScraper: (any) => void, urlComplete: (any?)=>void)
+    *scrape (urls: string[], dataScraper: Function, complete: (any?)=>void, urlScraper: (any) => void, urlComplete: (any?)=>void) : any
     {
         let _self = this;
-        var thens : Promise<any>[] = [];
-        winston.debug("Opening " + url);
 
-        var nightmare = Nightmare({show: false, pollInterval: 800, webPreferences: {images: false}});
+        var nightmare = Nightmare({show: true, pollInterval: 800, webPreferences: {images: false}});
+        var scrapers:any[] = [];
+        scrapers = urls.map((url) => workflow(url));
 
-        var item : any = null;
-        function createOrUpdateItemNotes(notes: string) {
-            if (item != null)
-                if (item.notes === undefined) item.notes = notes;
-                else item.notes += notes;
-            else
-                item = {url: url, notes: notes};
+        for (var i in urls){
+            yield workflow(urls[i]);
         }
 
-        function * workflow () {
-            yield nightmare.goto(url);
-            if (_self.scraperConfig.injectJQuery)
-            {
-                yield nightmare.inject("js", "client\\jquery.js")
-                    .evaluate(Function("window._pjs$ = jQuery.noConflict(true);"))
-                    .inject("js", "client\\pjscrape_client.js")
-                    .wait(Function("return window._pjs.ready;"));
-            }
-            if (!S(_self.scraperConfig.waitFor).isEmpty())
-                yield nightmare.wait(_self.scraperConfig.waitFor);
+        yield nightmare.end();
 
-            if (dataScraper != null)
-                item = yield nightmare.evaluate(dataScraper);
-                
-            if (urlScraper != null){
-                var data = yield vo(urlScraper(nightmare));
-
-                urlComplete(data);
-                createOrUpdateItemNotes("INDEX page. ")
-            }
-
-            yield nightmare.end();
-
-            winston.debug("scraper end");
-        }
-
-        return vo(workflow)
-            .catch((error) => {
-                winston.error(error);
-                createOrUpdateItemNotes(`${error} `);
-            })
-            .then (() => {
+        function *workflow(url) {
+            function createOrUpdateItemNotes(notes: string) {
                 if (item != null)
-                    complete(item);
-            });
+                    if (item.notes === undefined) item.notes = notes;
+                    else item.notes += notes;
+                else
+                    item = {url: url, notes: notes};
+            }
+            var item : any = null;
+
+            function * subWorkflow () {
+
+                winston.debug("Opening " + url);
+
+                yield nightmare.goto(url);
+                if (_self.scraperConfig.injectJQuery)
+                {
+                    yield nightmare.inject("js", "client\\jquery.js")
+                        .evaluate(Function("window._pjs$ = jQuery.noConflict(true);"))
+                        .inject("js", "client\\pjscrape_client.js")
+                        .wait(Function("return window._pjs.ready;"));
+                }
+                if (!S(_self.scraperConfig.waitFor).isEmpty())
+                    yield nightmare.wait(_self.scraperConfig.waitFor);
+
+                if (dataScraper != null)
+                    item = yield nightmare.evaluate(dataScraper);
+                    
+                if (urlScraper != null){
+                    var data = yield vo(urlScraper(nightmare));
+
+                    urlComplete(data);
+                    createOrUpdateItemNotes("INDEX page. ")
+                }
+            }
+
+            yield vo(subWorkflow)
+                .catch((error) => {
+                    winston.error(error);
+                    createOrUpdateItemNotes(`${error} `);
+                })
+                .then (() => {
+                    if (item != null)
+                        complete(item);
+                });
+        }    
     }
 }
 
@@ -127,29 +132,22 @@ class WebPageLauncher implements IWebPageLauncher {
             }
     }
 
-    private exportMoreUrls(moreUrls: any)
-    {
+    private exportMoreUrls(moreUrls: any) {
         this._scraper.exportOutputJson(moreUrls, "urls.json");
     }
 
     launchUrls() {
         var _self = this;
-        var chain = Promise.resolve();
-        this.urls.forEach((url)=> {
-            chain = chain.then(() => {
-                return new WebScrapper(new Settings(), _self._scraperConfig)
-                .scrape(url, _self._scraperConfig.scraper, (data) => _self.completeScraper(data), 
-                             _self.extractMoreUrls(), (data) => _self.completeMoreUrls(data));
-            })
-        })
 
-        chain.catch((error) => {
+        return vo(Utils.binarify(this.urls, _self._scraperConfig.instancesCount)
+                .map((bin) => new WebScrapper(new Settings(), _self._scraperConfig)
+                             .scrape(bin, _self._scraperConfig.scraper, (data) => _self.completeScraper(data), 
+                             _self.extractMoreUrls(), (data) => _self.completeMoreUrls(data)))
+        ).catch((error) => {
             winston.error("ERROR: " + error);
         }).then(() => {
             winston.debug("ending lauchUrls loop");
         });
-
-        return chain;
     }
 }
 
@@ -255,7 +253,7 @@ export class Scraper {
             await launcher.launchUrls();
         }
 
-        this.exportOutput();
+        //this.exportOutput();
     }
 
     private exportOutput() {
@@ -281,7 +279,8 @@ export class Scraper {
     }
 
     private defaultOutputFolder() : string {        
-        var profileFolder = new URL(this.settingsWeb.url).hostname.replace("www.","");
+        var profileFolder = new URL(Array.isArray(this.settingsWeb.url) ? this.settingsWeb.url[0] : this.settingsWeb.url)
+            .hostname.replace("www.","");
         return  path.resolve(this.settings.outFolder, profileFolder)
     }
 

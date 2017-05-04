@@ -8,6 +8,7 @@ type moreUrlTypes = moreUrlTypeFunction | string;
 export class SettingsWeb {
     url: string = "http://www.privateschoolsdirectory.com.au/";
     maxDepth: number = 1; // starting from 1
+    instancesCount: number = 2;
     injectJQuery: boolean = false;
     waitFor: string|number = null;
     exportUrls : boolean = true;l
