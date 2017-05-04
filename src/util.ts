@@ -73,6 +73,21 @@ export module Utils {
             )
         }( object ) );
     };
+
+    export function binarify(items: any[], bins: number) : any[] {
+        if (bins == 0 || items == null) return [];
+        if (bins == 1) return [items];
+        var data : any[] = [];
+
+        for (var i = 0; i < bins; i++) data.push([]);
+
+        for (var i = 0; i < items.length;) 
+            for (var j = 0; j < bins && i < items.length; j++, i++) 
+                data[j].push(items[i]);
+
+        return data;
+    }
+
 }
 
 export class UrlManager {
