@@ -10,7 +10,7 @@ describe("Utils binarify", () => {
         result = util_1.Utils.binarify(null, 0);
         result.length.should.equal(0);
     });
-    it('should return [input] when bin == 1', () => {
+    it('should return [bin] when bin == 1', () => {
         var result = util_1.Utils.binarify(["item1", "item2"], 1);
         result.length.should.equal(1);
         result[0].length.should.equal(2);
@@ -22,7 +22,7 @@ describe("Utils binarify", () => {
         result = util_1.Utils.binarify(null, 1);
         result.length.should.equal(0);
     });
-    it('should return [input1, input2] when bin > 1', () => {
+    it('should return [bin1, bin2] when bin > 1', () => {
         var result = util_1.Utils.binarify(["item1", "item2"], 2);
         result.length.should.equal(2);
         result[0].length.should.equal(1);

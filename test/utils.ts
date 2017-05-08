@@ -14,7 +14,7 @@ describe ("Utils binarify", () => {
         result.length.should.equal(0);
     });
 
-    it('should return [input] when bin == 1', () => {
+    it('should return [bin] when bin == 1', () => {
        
         var result = Utils.binarify(["item1", "item2"], 1);
         result.length.should.equal(1);
@@ -30,7 +30,7 @@ describe ("Utils binarify", () => {
         result.length.should.equal(0);
     });
 
-    it('should return [input1, input2] when bin > 1', () => {
+    it('should return [bin1, bin2] when bin > 1', () => {
        
         var result = Utils.binarify(["item1", "item2"], 2);
         result.length.should.equal(2);

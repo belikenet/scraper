@@ -107,7 +107,7 @@ class WebPageLauncher implements IWebPageLauncher {
     }
 
     private extractMoreUrls() : any {
-        if (this._scraperConfig.moreUrls && (!this._scraperConfig.maxDepth || this.launcherConfig.depth < this._scraperConfig.maxDepth)) {
+        if (this._scraperConfig.moreUrls && (!this._scraperConfig.maxDepth || this.launcherConfig.depth <= this._scraperConfig.maxDepth)) {
             // allow selector-only spiders
             let validMoreUrls = this._scraperConfig.moreUrls;
             if (typeof validMoreUrls == 'string') {
@@ -146,7 +146,7 @@ class WebPageLauncher implements IWebPageLauncher {
         ).catch((error) => {
             winston.error("ERROR: " + error);
         }).then(() => {
-            winston.debug("ending lauchUrls loop");
+            winston.debug("ending launch Electron instances");
         });
     }
 }
@@ -208,7 +208,7 @@ export class Scraper {
     }
 
     private collapse(text:string) : string {
-        return S(text.replace(new RegExp(",", 'g'), " ")).collapseWhitespace().toString();
+        return S(text).collapseWhitespace().toString();
     }
 
     private validateDataItem(source: any) : any {
@@ -253,11 +253,11 @@ export class Scraper {
             await launcher.launchUrls();
         }
 
-        //this.exportOutput();
+        this.exportOutput();
     }
 
     private exportOutput() {
-        winston.debug("writing");
+        winston.warn("writing items");
         // exportSettings checks & create profile folder
         this.exportSettings();
         var outputFile = path.resolve (this.defaultOutputFolder(), this.settings.outFile);
@@ -307,12 +307,12 @@ export class Scraper {
             // file
             else {
                 var ext = path.extname(urls);
-                if (ext=="json" || ext == "csv")
+                if (ext==".json" || ext == ".csv")
                 {
-                    var inputFile = path.resolve (this.defaultOutputFolder(), urls);
+                    //var inputFile = path.resolve (this.defaultOutputFolder(), urls);
                     //TODO: check if file exists
-                    var content = fs.readFileSync(inputFile, "UTF8");
-                    urls = ext == "json" ? JSON.parse(content) : csv.csvParse(content);
+                    var content = fs.readFileSync(urls, "UTF8");
+                    urls = ext == ".json" ? JSON.parse(content) : csv.csvParse(content);
                 }
             }
         }
