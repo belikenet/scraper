@@ -6,6 +6,7 @@ import { Settings } from "./settings";
 import { SettingsWeb } from "./settings.web";
 import { Utils, UrlManager } from "./util";
 import * as Enumerable from "linq";
+import { web, Repository } from "./repository";
 
 const Nightmare = require ("nightmare");
 const vo = require("vo");
@@ -121,15 +122,33 @@ class WebPageLauncher implements IWebPageLauncher {
         return null;
     }
 
-    private completeMoreUrls(moreUrls: string[]) {
-            if (moreUrls) {
-                if (moreUrls.length) {
-                    winston.debug('Found ' + moreUrls.length + ' additional urls to scrape');
-                    if (this._scraperConfig.exportUrls)
-                        this.exportMoreUrls(moreUrls);
-                    this._scraper.addLauncher(moreUrls, this.launcherConfig.buildChild());
+    private completeMoreUrls(moreUrls: any[]) {
+        if (moreUrls && Array.isArray(moreUrls) && moreUrls.length > 0) {
+
+            winston.debug('Found ' + moreUrls.length + ' additional urls to scrape');
+            if (this._scraperConfig.exportUrls)
+                this.exportMoreUrls(moreUrls);
+            this._scraper.addLauncher(moreUrls, this.launcherConfig.buildChild());
+
+            var records = moreUrls.map((u) => {
+                var w:web = null;
+                if (typeof u === "string")
+                    w = new web(u);
+                else if (u["url"] !== undefined) {
+                    w = new web (u["url"]);
+                    delete u["url"];
+                    w.notes = u;
                 }
-            }
+                if (w!=null){
+                    w.depth = this.launcherConfig.depth + 1;
+                    w.isLeaf = w.depth == this._scraperConfig.maxDepth;
+                    return w;
+                }
+                winston.error("Url not recognized: " + u);
+            })
+
+            //new Repository().insert (records).then(() => {});
+        }
     }
 
     private exportMoreUrls(moreUrls: any) {

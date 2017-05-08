@@ -16,6 +16,7 @@ const settings_1 = require("./settings");
 const settings_web_1 = require("./settings.web");
 const util_1 = require("./util");
 const Enumerable = require("linq");
+const repository_1 = require("./repository");
 const Nightmare = require("nightmare");
 const vo = require("vo");
 const csv = require("d3-dsv");
@@ -88,7 +89,7 @@ class WebPageLauncher {
         this._scraper.addItem(scraperResult);
     }
     extractMoreUrls() {
-        if (this._scraperConfig.moreUrls && (!this._scraperConfig.maxDepth || this.launcherConfig.depth < this._scraperConfig.maxDepth)) {
+        if (this._scraperConfig.moreUrls && (!this._scraperConfig.maxDepth || this.launcherConfig.depth <= this._scraperConfig.maxDepth)) {
             // allow selector-only spiders
             let validMoreUrls = this._scraperConfig.moreUrls;
             if (typeof validMoreUrls == 'string') {
@@ -104,13 +105,28 @@ class WebPageLauncher {
         return null;
     }
     completeMoreUrls(moreUrls) {
-        if (moreUrls) {
-            if (moreUrls.length) {
-                winston.debug('Found ' + moreUrls.length + ' additional urls to scrape');
-                if (this._scraperConfig.exportUrls)
-                    this.exportMoreUrls(moreUrls);
-                this._scraper.addLauncher(moreUrls, this.launcherConfig.buildChild());
-            }
+        if (moreUrls && Array.isArray(moreUrls) && moreUrls.length > 0) {
+            winston.debug('Found ' + moreUrls.length + ' additional urls to scrape');
+            if (this._scraperConfig.exportUrls)
+                this.exportMoreUrls(moreUrls);
+            this._scraper.addLauncher(moreUrls, this.launcherConfig.buildChild());
+            var records = moreUrls.map((u) => {
+                var w = null;
+                if (typeof u === "string")
+                    w = new repository_1.web(u);
+                else if (u["url"] !== undefined) {
+                    w = new repository_1.web(u["url"]);
+                    delete u["url"];
+                    w.notes = u;
+                }
+                if (w != null) {
+                    w.depth = this.launcherConfig.depth + 1;
+                    w.isLeaf = w.depth == this._scraperConfig.maxDepth;
+                    return w;
+                }
+                winston.error("Url not recognized: " + u);
+            });
+            //new Repository().insert (records).then(() => {});
         }
     }
     exportMoreUrls(moreUrls) {
@@ -123,7 +139,7 @@ class WebPageLauncher {
             .scrape(bin, _self._scraperConfig.scraper, (data) => _self.completeScraper(data), _self.extractMoreUrls(), (data) => _self.completeMoreUrls(data)))).catch((error) => {
             winston.error("ERROR: " + error);
         }).then(() => {
-            winston.debug("ending lauchUrls loop");
+            winston.debug("ending launch Electron instances");
         });
     }
 }
@@ -166,7 +182,7 @@ class Scraper {
         }
     }
     collapse(text) {
-        return S(text.replace(new RegExp(",", 'g'), " ")).collapseWhitespace().toString();
+        return S(text).collapseWhitespace().toString();
     }
     validateDataItem(source) {
         var merged = Object.assign({}, this.settingsWeb.dataTemplate, source);
@@ -211,11 +227,11 @@ class Scraper {
             while (launcher = this.launchers.shift()) {
                 yield launcher.launchUrls();
             }
-            //this.exportOutput();
+            this.exportOutput();
         });
     }
     exportOutput() {
-        winston.debug("writing");
+        winston.warn("writing items");
         // exportSettings checks & create profile folder
         this.exportSettings();
         var outputFile = path.resolve(this.defaultOutputFolder(), this.settings.outFile);
@@ -256,11 +272,11 @@ class Scraper {
                 return util_1.Utils.arrify(urls);
             else {
                 var ext = path.extname(urls);
-                if (ext == "json" || ext == "csv") {
-                    var inputFile = path.resolve(this.defaultOutputFolder(), urls);
+                if (ext == ".json" || ext == ".csv") {
+                    //var inputFile = path.resolve (this.defaultOutputFolder(), urls);
                     //TODO: check if file exists
-                    var content = fs.readFileSync(inputFile, "UTF8");
-                    urls = ext == "json" ? JSON.parse(content) : csv.csvParse(content);
+                    var content = fs.readFileSync(urls, "UTF8");
+                    urls = ext == ".json" ? JSON.parse(content) : csv.csvParse(content);
                 }
             }
         }
