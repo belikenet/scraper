@@ -4,6 +4,7 @@
         "module": "commonjs",
         "sourceMap": true,
         "allowJs": true
+        "outDir": "../dist/"
     },
     "include": [
         "../src/**/*.ts",
