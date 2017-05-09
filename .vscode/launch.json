@@ -17,7 +17,7 @@
                 "--colors",
                 "--reporter",
                 "spec",
-                "${workspaceRoot}\\test"
+                "${workspaceRoot}\\dist\\test"
             ],
             "internalConsoleOptions": "openOnSessionStart"
         },
