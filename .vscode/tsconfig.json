@@ -3,7 +3,9 @@
         "target": "ES6",
         "module": "commonjs",
         "sourceMap": true,
-        "allowJs": true
+        "allowJs": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
         "outDir": "../dist/"
     },
     "include": [

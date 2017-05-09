@@ -11,6 +11,7 @@
   "dependencies": {
     "chai": "^3.5.0",
     "d3-dsv": "^1.0.5",
+    "di-typescript": "^1.1.3",
     "linq": "^3.0.8",
     "md5": "^2.2.1",
     "mocha": "^3.3.0",
