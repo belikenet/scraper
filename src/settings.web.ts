@@ -11,7 +11,7 @@ export class SettingsWeb {
     instancesCount: number = 2;
     injectJQuery: boolean = false;
     waitFor: string|number = null;
-    exportUrls : boolean = true;l
+    exportUrls : boolean = true;
     moreUrls : any //moreUrlTypes
         = function (level: number, url: string) {
         return function * (nightmare) {

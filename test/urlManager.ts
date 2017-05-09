@@ -24,7 +24,6 @@ class SettingsFactory {
         constructor() {
             super();
             this.allowRepeatedUrls = 
-            this.debug = 
             this.debugRequest =
             this.debugResponse =
             this.newHashNewPage = false;

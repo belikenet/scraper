@@ -51,7 +51,7 @@ class WebScrapper {
 
             function * subWorkflow () {
 
-                winston.debug("Opening " + url);
+                winston.silly("Opening " + url);
 
                 yield nightmare.goto(url);
                 if (_self.scraperConfig.injectJQuery)
@@ -61,8 +61,9 @@ class WebScrapper {
                         .inject("js", "client\\pjscrape_client.js")
                         .wait(Function("return window._pjs.ready;"));
                 }
-                if (!S(_self.scraperConfig.waitFor).isEmpty())
-                    yield nightmare.wait(_self.scraperConfig.waitFor);
+
+                //if (!S(_self.scraperConfig.waitFor).isEmpty())
+                //    yield nightmare.wait(_self.scraperConfig.waitFor);
 
                 if (dataScraper != null)
                     item = yield nightmare.evaluate(dataScraper);
@@ -103,7 +104,7 @@ class WebPageLauncher implements IWebPageLauncher {
     }
 
     private completeScraper(scraperResult: any){
-        winston.debug("data complete");
+        winston.verbose("data complete");
         this._scraper.addItem(scraperResult);
     }
 
@@ -125,7 +126,7 @@ class WebPageLauncher implements IWebPageLauncher {
     private completeMoreUrls(moreUrls: any[]) {
         if (moreUrls && Array.isArray(moreUrls) && moreUrls.length > 0) {
 
-            winston.debug('Found ' + moreUrls.length + ' additional urls to scrape');
+            winston.verbose('Found ' + moreUrls.length + ' additional urls to scrape');
             if (this._scraperConfig.exportUrls)
                 this.exportMoreUrls(moreUrls);
             this._scraper.addLauncher(moreUrls, this.launcherConfig.buildChild());
@@ -165,7 +166,7 @@ class WebPageLauncher implements IWebPageLauncher {
         ).catch((error) => {
             winston.error("ERROR: " + error);
         }).then(() => {
-            winston.debug("ending launch Electron instances");
+            winston.verbose("ending launch Electron instances");
         });
     }
 }
@@ -252,6 +253,17 @@ export class Scraper {
         return merged;
     }
 
+    private setLogger () {
+        if (process.env.DEBUG && !this.settings.logLevel) 
+            this.settings.logLevel = "verbose";
+        if (this.settings.logLevel){
+            //winston.level = this.settings.logLevel
+            winston.transports[0].level = this.settings.logLevel;
+            winston.transports[0].colorize = true;
+            winston.transports[0].prettyPrint = true;
+        }
+    }
+
     private buildLauncher(urls: string[], launcherConfig: WebPageLauncherSettings) : IWebPageLauncher {
         var validUrls = this._urlManager.addUrls(urls);
         if (validUrls.length > 0){
@@ -261,6 +273,7 @@ export class Scraper {
     }
 
     async init () {
+        this.setLogger();
         var urls = this.processInputUrls(this.settingsWeb.url);
         var firstLauncher = this.buildLauncher(urls, new WebPageLauncherSettings());
         if (!firstLauncher)
@@ -276,7 +289,7 @@ export class Scraper {
     }
 
     private exportOutput() {
-        winston.warn("writing items");
+        winston.verbose("writing items");
         // exportSettings checks & create profile folder
         this.exportSettings();
         var outputFile = path.resolve (this.defaultOutputFolder(), this.settings.outFile);

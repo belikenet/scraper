@@ -1,7 +1,8 @@
 export class Settings {
     debugResponse: boolean = false;
     debugRequest: boolean = false;
-    debug: boolean = false;
+    //debug: boolean = false;
+    logLevel:string = null; // silly, debug, verbose, info, warn, error  
     delayBetweenRuns: number = 0;
     timeoutInterval: number = 100;
     timeoutLimit: number = 3000;
