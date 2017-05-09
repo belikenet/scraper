@@ -15,7 +15,8 @@ node_modules
 bin
 client
 profiles
-dist
+dist/**/*.js
+dist/**/*.js.map
 
 npm-debug.log
 output.json
