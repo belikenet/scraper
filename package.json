@@ -17,6 +17,7 @@
     "mocha": "^3.3.0",
     "nedb": "^1.8.0",
     "nightmare": "^2.10.0",
+    "reflect-metadata": "^0.1.10",
     "sinon": "^2.1.0",
     "string": "^3.3.3",
     "vo": "^4.0.2",
