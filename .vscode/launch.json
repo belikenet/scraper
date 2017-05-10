@@ -25,7 +25,13 @@
             "type": "node",
             "request": "launch",
             "name": "Launch",
-            "program": "${workspaceRoot}\\src\\debug.ts"
+            "program": "${workspaceRoot}\\src\\debug.ts",
+            "sourceMaps": true,
+            "stopOnEntry": false,
+            "outFiles": [
+                "${workspaceRoot}\\dist\\src\\*.js"
+            ],
+            "console": "internalConsole"
             //"env": {
             //    "DEBUG": "*"
             //}
