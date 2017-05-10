@@ -1,4 +1,6 @@
 import * as S from "string";
+import * as winston from "winston";
+
 
 const Datastore = require('nedb'), 
       db = new Datastore({ filename: 'profiles\\profiles.db', autoload: true });
@@ -117,6 +119,27 @@ export class Repository {
                 return resolve(docs);
             });
         });
+    }
+
+    insertUrls(moreUrls: any, depth: number, isLeaf: boolean) {
+        var records = moreUrls.map((u) => {
+            var w:web = null;
+            if (typeof u === "string")
+                w = new web(u);
+            else if (u["url"] !== undefined) {
+                w = new web (u["url"]);
+                delete u["url"];
+                w.notes = u;
+            }
+            if (w!=null){
+                w.depth = depth;
+                w.isLeaf = isLeaf;
+                return w;
+            }
+            winston.error("Url not recognized: " + u);
+            return undefined;
+        });
+        return this.insert(records.filter((u) => u === undefined));
     }
 
 }
