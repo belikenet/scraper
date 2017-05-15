@@ -18,7 +18,7 @@ export class FileManager {
         this.settings = settings;
     }
 
-    exportSettings (profileFolder : string = this.defaultOutputFolder()) {
+    exportSettings (profileFolder : string = this.settingsWeb.profileFolder) {
         if (!fs.existsSync(profileFolder)){
             fs.mkdirSync(profileFolder);
         }
@@ -31,16 +31,16 @@ export class FileManager {
         winston.verbose("writing items");
         // exportSettings checks & create profile folder
         this.exportSettings();
-        var outputFile = path.resolve (this.defaultOutputFolder(), this.settings.outFile);
+        var outputFile = path.resolve (this.settingsWeb.profileFolder, this.settings.outFile);
         if (this.settings.format == "json")
-            fs.writeFile(outputFile, JSON.stringify(items));
+            fs.writeFileSync(outputFile, JSON.stringify(items));
         if (this.settings.format == "csv")
-            fs.writeFile(outputFile, csv.csvFormat(items.map(i => Utils.flatten(i)).filter(i => i)));
+            fs.writeFileSync(outputFile, csv.csvFormat(items.map(i => Utils.flatten(i)).filter(i => i)));
     }
 
     exportOutputJson(data: any, filename: string){
-        var outputFile = path.resolve (this.defaultOutputFolder(), filename);
-        fs.writeFile(outputFile, JSON.stringify(data));
+        var outputFile = path.resolve (this.settingsWeb.profileFolder, filename);
+        fs.writeFileSync(outputFile, JSON.stringify(data));
     }
 
     processInputUrls (urls: any) : string[] {
@@ -56,8 +56,9 @@ export class FileManager {
                 if (ext==".json" || ext == ".csv")
                 {
                     //var inputFile = path.resolve (this.defaultOutputFolder(), urls);
+                    var inputFile = path.resolve (this.settingsWeb.profileFolder, urls);
                     //TODO: check if file exists
-                    var content = fs.readFileSync(urls, "UTF8");
+                    var content = fs.readFileSync(inputFile, "UTF8");
                     urls = ext == ".json" ? JSON.parse(content) : csv.csvParse(content);
                 }
             }
@@ -76,15 +77,9 @@ export class FileManager {
 
 
     private importJson(filename: string){
-        var inputFile = path.resolve (this.defaultOutputFolder(), filename);
+        var inputFile = path.resolve (this.settingsWeb.profileFolder, filename);
         var content = fs.readFileSync(inputFile, "UTF8");
         return JSON.parse(content);
-    }
-
-    private defaultOutputFolder() : string {        
-        var profileFolder = new URL(Array.isArray(this.settingsWeb.url) ? this.settingsWeb.url[0] : this.settingsWeb.url)
-            .hostname.replace("www.","");
-        return  path.resolve(this.settings.outFolder, profileFolder)
     }
 
     private copyFile(sourceFile: string, targetFile: string){
