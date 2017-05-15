@@ -9,6 +9,7 @@
             "request": "launch",
             "name": "Mocha Tests",
             "program": "${workspaceRoot}/node_modules/mocha/bin/_mocha",
+            "protocol": "inspector",
             "args": [
                 "-u",
                 "tdd",
@@ -19,7 +20,14 @@
                 "spec",
                 "${workspaceRoot}\\dist\\test"
             ],
-            "internalConsoleOptions": "openOnSessionStart"
+            "cwd": "${workspaceRoot}",
+            "internalConsoleOptions": "openOnSessionStart",
+            "sourceMaps": true,
+            "outFiles" : ["${workspaceRoot}\\dist"],
+            "skipFiles": [
+                "node_modules/**/*.js",
+                "<node_internals>/**/*.js"
+            ]
         },
         {
             "type": "node",
