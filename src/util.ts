@@ -1,6 +1,7 @@
 import md5 = require("md5");
 import * as S from "string";
-import { Settings } from "./settings";
+import {Inject, Injector} from 'di-typescript';
+import { Scraper } from "./scrape";
 import { urlPayload } from "./webPageLauncher";
 
 export module Utils {
@@ -91,30 +92,14 @@ export module Utils {
 
 }
 
-export class UrlManager {
-    visitedUrls : string[] = [];
-    private config: Settings;
+export class Factories {
+    private static _injector: any = new Injector(/*[{provide: IDataManager, useClass: EventsDataManager}]*/);
+    constructor () {
 
-    /**
-     *
-     */
-    constructor(config: Settings) {
-        this.config = config;
     }
 
-    private tryAddUrl (url: string) : boolean {
-        if (S(url).isEmpty()) return false;
-        url = this.config.newHashNewPage ? url.split('#')[0] : url;
-        var isValidUrl = (!(this.config.allowRepeatedUrls && url in this.visitedUrls))
-        if (isValidUrl)
-            this.visitedUrls.push(url);
-        return isValidUrl;
-    }
-
-    addUrls (urls: string[]) : string[]{
-        var _self = this;
-        if (urls === null || urls === undefined) return urls;
-        return urls.filter(function(u) { return _self.tryAddUrl(u); });
+    static getScraper() {
+        return this._injector.get(Scraper);
     }
 }
 
@@ -122,4 +107,3 @@ export interface IDataManager {
     add(urlPayload: urlPayload, item: any | any[]);
     all(): any[];
 }
-

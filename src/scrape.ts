@@ -33,9 +33,9 @@ export class Scraper {
             this.settings.logLevel = "verbose";
         if (this.settings.logLevel){
             //winston.level = this.settings.logLevel
-            winston.transports[0].level = this.settings.logLevel;
-            winston.transports[0].colorize = true;
-            winston.transports[0].prettyPrint = true;
+            winston.transports.Console.level = this.settings.logLevel;
+            winston.transports.Console.colorize = true;
+            winston.transports.Console.prettyPrint = true;
         }
     }
 

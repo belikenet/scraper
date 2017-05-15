@@ -5,10 +5,12 @@ var _pjs$ : JQueryStatic;
 type moreUrlTypeFunction = (depth?: number, url?: string) => any;
 type moreUrlTypes = moreUrlTypeFunction | string;
 
-export class SettingsWeb {
-    url: string = "http://www.privateschoolsdirectory.com.au/";
+
+export class SettingsWebConfig {
+    url: string = "primavera sound.urls.json";
     maxDepth: number = 1; // starting from 1
     instancesCount: number = 2;
+    defaultTemplateValues : string[] = ["University", "CA"]; // _type, country
     injectJQuery: boolean = false;
     waitFor: string|number = null;
     exportUrls : boolean = true;
@@ -89,3 +91,61 @@ export class SettingsWeb {
         "notes": ""
     };
 }
+
+@Inject
+export class SettingsWeb extends SettingsWebConfig {
+    profileFolder: string = null;
+    moreUrlsAction: any;
+    scraperAction: any;
+
+    constructor(settings: Settings) {
+        super();
+        this.init(settings);
+    }
+
+    public init(settings: Settings) {
+        var self = this;
+        initProfileFolder(settings);
+        initMoreUrlsCallback();
+        initDataTemplate(self.defaultTemplateValues);
+        self.scraperAction = self.scraper;
+
+        function initDataTemplate(args: string[]) {
+            if (args != null && args != undefined && Array.isArray(args) && args.length == 2)
+                populate.apply(self, args);
+            function populate(_type: string, country: string) {
+                self.dataTemplate._type = _type;
+                self.dataTemplate.contact.country = country;
+            }
+        }
+
+        function initProfileFolder(settings: Settings) {
+            var outFolder = settings.outFolder && settings.outFolder.length > 0 ? settings.outFolder : "profiles"; // always set a default value for outFolder
+            if (self.profile == "") {
+                try {
+                    var profileFolder = new URL(Array.isArray(self.url) ? self.url[0] : self.url)
+                                            .hostname.replace("www.","");
+                    self.profileFolder = path.resolve(outFolder, profileFolder);
+                } catch(ex) {
+                    self.profileFolder = path.resolve(outFolder, "no.profile");
+                }
+            } else {
+                self.profileFolder = path.resolve(outFolder, self.profile);
+            }
+        }
+
+        function initMoreUrlsCallback() {
+            var cb = null;
+            if (self.moreUrls != null) {
+                if (typeof self.moreUrls == 'string') {
+                    if (self.moreUrls.length > 0) 
+                        cb = Function (`var ___x= []; document.querySelectorAll("${self.moreUrls}").forEach((e) => ___x.push(e.href)); return ___x;`);
+                } else 
+                    cb = self.moreUrls(self.url);
+            }
+            self.moreUrlsAction = cb;
+        }
+
+    }
+}
+
