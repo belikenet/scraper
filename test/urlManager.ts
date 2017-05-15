@@ -1,47 +1,5 @@
-import {UrlManager} from "../src/util";
-import {Settings} from "../src/settings";
-
-//import * as chai from "chai";
-//import * as sinonjs from "sinon";
-//const expect = chai.expect;
-//const should = chai.should();
-
-class UrlManagerFactory {
-    static simple(urls: string[] = null, defaultSettings?: any) {
-        var settings = SettingsFactory.empty(defaultSettings);
-        var urlManager = new UrlManager(settings);
-
-        if (urls!=null)
-            urlManager.addUrls(urls);
-
-        return {urlManager, settings};
-    }    
-}
-
-class SettingsFactory {
-    
-    protected static TestSettings = class extends Settings {
-        constructor() {
-            super();
-            this.allowRepeatedUrls = 
-            this.debugRequest =
-            this.debugResponse =
-            this.newHashNewPage = false;
-            this.delayBetweenRuns = 
-            this.timeoutInterval =
-            this.timeoutLimit = 0;
-            this.format =
-            this.logFile =
-            this.outFile = null;
-        }
-    }
-
-    static empty (defaultArguments?: any) : Settings {
-        var settings = new SettingsFactory.TestSettings();
-        return { ...settings, ...defaultArguments }
-    }
-}
-
+import {UrlManager} from "../src/urlManager";
+import { UrlManagerFactory } from "./factories";
 
 describe ("UrlManager tests", () => {
     it('should add url when visitedUrls is empty', () => {
