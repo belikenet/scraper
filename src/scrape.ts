@@ -6,21 +6,26 @@ import { Inject } from 'di-typescript';
 
 import { DataManager } from "./dataManager";
 import { WebPageLauncherQueue } from "./webPageLauncherQueue";
+import { Repository } from "./repository";
+import { IDataManager } from "./util";
+import { EventsDataManager } from "./eventsDataManager";
 
 @Inject
 export class Scraper {
-    private dataManager: DataManager;
+    private repository: Repository;
+    private dataManager: IDataManager;
     private queue: WebPageLauncherQueue;
     private fileManager: FileManager;
     private settingsWeb: SettingsWeb;
     private settings : Settings;
 
-    constructor(settingsWeb: SettingsWeb, settings: Settings, fileManager: FileManager, dataManager: DataManager, queue: WebPageLauncherQueue) {
+    constructor(settingsWeb: SettingsWeb, settings: Settings, fileManager: FileManager, dataManager: EventsDataManager, queue: WebPageLauncherQueue, repository: Repository) {
         this.settingsWeb = settingsWeb;
         this.settings = settings;
         this.fileManager = fileManager;
         this.queue = queue;
         this.dataManager = dataManager;
+        this.repository = repository;
     }
 
     private setLogger () {
@@ -42,7 +47,7 @@ export class Scraper {
 
         var launcher : any;
         while (launcher = this.queue.shift()){
-            await launcher.launchUrls((data) => self.dataManager.add(data), (data) => self.completeMoreUrls(data, launcher.launcherConfig));
+            await launcher.launchUrls((urlPayload, data) => self.dataManager.add(urlPayload, data), (data) => self.completeMoreUrls(data, launcher.launcherConfig));
         }
 
         this.fileManager.exportOutput(this.dataManager.all());
@@ -50,7 +55,7 @@ export class Scraper {
 
     private completeMoreUrls(moreUrls: any[], launcherConfig: any) {
         this.queue.addLauncherChild(moreUrls, launcherConfig)
-        //new Repository().insertUrls (moreUrls, this.launcherConfig.depth + 1, this.launcherConfig.depth + 1 == this.scraperConfig.maxDepth).then(() => {});
+        this.repository.insertUrls (moreUrls, launcherConfig.depth + 1, launcherConfig.depth + 1 == this.settingsWeb.maxDepth).then(() => {});
     }
 
 }

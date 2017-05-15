@@ -1,6 +1,7 @@
 import md5 = require("md5");
 import * as S from "string";
 import { Settings } from "./settings";
+import { urlPayload } from "./webPageLauncher";
 
 export module Utils {
     export function isFunction (f) : boolean {
@@ -116,3 +117,9 @@ export class UrlManager {
         return urls.filter(function(u) { return _self.tryAddUrl(u); });
     }
 }
+
+export interface IDataManager {
+    add(urlPayload: urlPayload, item: any | any[]);
+    all(): any[];
+}
+

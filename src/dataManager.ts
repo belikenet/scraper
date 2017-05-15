@@ -2,11 +2,12 @@ import * as winston from "winston";
 
 import { Inject } from "di-typescript";
 import { SettingsWeb } from "./settings.web";
-import { Utils } from "./util";
+import { Utils, IDataManager } from "./util";
 import * as S from "string";
+import { urlPayload } from "./webPageLauncher";
 
 @Inject
-export class DataManager {
+export class DataManager implements IDataManager {
     private settingsWeb: SettingsWeb;
     items: any[] = []; 
 
@@ -14,7 +15,7 @@ export class DataManager {
         this.settingsWeb = settingsWeb;
     }
 
-    add(item: any|any[]) {
+    add(urlPayload: urlPayload, item: any|any[]) {
         var self = this;
         // check for ignoreDuplicates
         if (item)
@@ -22,9 +23,9 @@ export class DataManager {
             winston.verbose("adding data");
             var items = Utils.isArray(item) ? item : [item];
             items = items.map((x) => this.validateDataItem(x));
-            this.items = this.items.concat(items);
+            //this.items = this.items.concat(items);
             // apply for flattening items
-            this.items = [].concat(this.items);
+            this.items = [].concat(items);
         }
     }
 
@@ -59,3 +60,4 @@ export class DataManager {
     }
 
 }
+

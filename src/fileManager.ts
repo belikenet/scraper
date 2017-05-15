@@ -64,13 +64,8 @@ export class FileManager {
             }
         }
 
-        if (Array.isArray(urls)){
-            if (urls.length > 0)
-                if (typeof urls[0] === "string")
-                    return urls;
-                else
-                    return Enumerable.from(urls as any[]).select((x) => x.url).toArray();
-        }
+        if (Array.isArray(urls) && urls.length > 0)
+                return urls;
 
         return null;
     }
