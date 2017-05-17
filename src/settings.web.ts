@@ -1,5 +1,8 @@
 /// <reference types="jquery" />
 const vo = require("vo");
+const path = require("path");
+import { Settings } from "./settings";
+import { Inject } from "di-typescript";
 
 var _pjs$ : JQueryStatic;
 type moreUrlTypeFunction = (depth?: number, url?: string) => any;
@@ -14,6 +17,7 @@ export class SettingsWebConfig {
     injectJQuery: boolean = false;
     waitFor: string|number = null;
     exportUrls : boolean = true;
+    profile: string = "test";
     moreUrls : any //moreUrlTypes
         = function (level: number, url: string) {
         return function * (nightmare) {
