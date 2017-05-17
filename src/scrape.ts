@@ -19,7 +19,7 @@ export class Scraper {
     private settingsWeb: SettingsWeb;
     private settings : Settings;
 
-    constructor(settingsWeb: SettingsWeb, settings: Settings, fileManager: FileManager, dataManager: EventsDataManager, queue: WebPageLauncherQueue, repository: Repository) {
+    constructor(settingsWeb: SettingsWeb, settings: Settings, fileManager: FileManager, dataManager: DataManager, queue: WebPageLauncherQueue, repository: Repository) {
         this.settingsWeb = settingsWeb;
         this.settings = settings;
         this.fileManager = fileManager;
@@ -54,8 +54,13 @@ export class Scraper {
     }
 
     private completeMoreUrls(moreUrls: any[], launcherConfig: any) {
-        this.queue.addLauncherChild(moreUrls, launcherConfig)
-        this.repository.insertUrls (moreUrls, launcherConfig.depth + 1, launcherConfig.depth + 1 == this.settingsWeb.maxDepth).then(() => {});
+        if (this.settingsWeb.exportUrls)
+            // customize filename in settings
+            this.fileManager.exportOutputJson(moreUrls, "urls.json");
+        if (launcherConfig.depth + 1 <= this.settingsWeb.maxDepth) {
+            this.queue.addLauncherChild(moreUrls, launcherConfig)
+            this.repository.insertUrls (moreUrls, launcherConfig.depth + 1, launcherConfig.depth + 1 == this.settingsWeb.maxDepth).then(() => {});
+        }
     }
 
 }

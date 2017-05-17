@@ -27,9 +27,6 @@ export class WebPageLauncherQueue {
         if (urls && Array.isArray(urls) && urls.length > 0)
         {
             winston.verbose('Found ' + urls.length + ' additional urls to scrape');
-            if (this.settingsWeb.exportUrls)
-                // customize filename in settings
-                this.fileManager.exportOutputJson(urls, "urls.json");
             var newLauncher = this.buildLauncher(urls, launcherSettings);
             if (newLauncher)
                 this.launchers.push(newLauncher);

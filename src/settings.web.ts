@@ -1,6 +1,7 @@
 /// <reference types="jquery" />
 const vo = require("vo");
 const path = require("path");
+const fs = require('fs');
 import { Settings } from "./settings";
 import { Inject } from "di-typescript";
 
@@ -10,14 +11,14 @@ type moreUrlTypes = moreUrlTypeFunction | string;
 
 
 export class SettingsWebConfig {
-    url: string = "primavera sound.urls.json";
+    url: string = "urls.json";
     maxDepth: number = 1; // starting from 1
-    instancesCount: number = 2;
-    defaultTemplateValues : string[] = ["University", "CA"]; // _type, country
+    instancesCount: number = 4;
+    defaultTemplateValues : string[] = ["Society", "CA"]; // _type, country
+    profile: string = "suclubs.orgsync.com";
     injectJQuery: boolean = false;
     waitFor: string|number = null;
     exportUrls : boolean = true;
-    profile: string = "test";
     moreUrls : any //moreUrlTypes
         = function (level: number, url: string) {
         return function * (nightmare) {
@@ -136,6 +137,8 @@ export class SettingsWeb extends SettingsWebConfig {
             } else {
                 self.profileFolder = path.resolve(outFolder, self.profile);
             }
+            if (self.profileFolder && !fs.existsSync(self.profileFolder))
+                    fs.mkdirSync(self.profileFolder)
         }
 
         function initMoreUrlsCallback() {

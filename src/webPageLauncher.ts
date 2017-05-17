@@ -24,18 +24,11 @@ export function isUrlPayload(urlPayload: urlPayload) : urlPayload is IUrlPayload
     return r;
 }
 
-//type tUrlPayload = typeof IUrlPayload;
-
-//@Inject
 export class WebPageLauncherSettings {
     readonly depth: number;
 
     constructor(depth?: number, ) {
         this.depth = depth || 1;
-    }
-
-    private defaultTitle (depth: number) : string {
-        return " depth " + (depth) + " _";
     }
 
     buildChild() : WebPageLauncherSettings {
@@ -52,10 +45,8 @@ export class WebPageLauncher implements WebPageLauncher {
     readonly urls: urlPayload[];
 
     constructor(urls: urlPayload[], launcherConfig: WebPageLauncherSettings, settingsWeb: SettingsWeb) {
-        //this._scraper = scraper;
         this.scraperConfig = settingsWeb;
         this.launcherConfig = launcherConfig;
-        //this.fileManager = fileManager;
         this.urls = urls;
     }
 
@@ -111,14 +102,16 @@ export class WebPageLauncher implements WebPageLauncher {
                         .wait(Function("return window._pjs.ready;"));
                 }
 
-                if (dataScraper != null)
-                    item = yield nightmare.evaluate(dataScraper);
-                    
-                if (urlScraper != null){
-                    var data = yield vo(urlScraper(nightmare));
+                if (_self.launcherConfig.depth == _self.scraperConfig.maxDepth){
+                    if (dataScraper != null)
+                        item = yield nightmare.evaluate(dataScraper);
+                } else {                    
+                    if (urlScraper != null){
+                        var data = yield vo(urlScraper(nightmare));
 
-                    urlComplete(data);
-                    createOrUpdateItemNotes("INDEX page. ")
+                        urlComplete(data);
+                        createOrUpdateItemNotes("INDEX page. ")
+                    }
                 }
             }
 
