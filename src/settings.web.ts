@@ -2,6 +2,7 @@
 const vo = require("vo");
 const path = require("path");
 const fs = require('fs');
+const URL = require('url').URL;
 import { Settings } from "./settings";
 import { Inject } from "di-typescript";
 
@@ -19,7 +20,8 @@ export class SettingsWebConfig {
     injectJQuery: boolean = false;
     waitFor: string|number = null;
     exportUrls : boolean = true;
-    moreUrls : any //moreUrlTypes
+    moreUrls : any = null;
+    _moreUrls : any //moreUrlTypes
         = function (level: number, url: string) {
         return function * (nightmare) {
             var data = [];

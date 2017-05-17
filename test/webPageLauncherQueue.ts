@@ -1,4 +1,4 @@
-import { SettingsFactory, SettingsWebFactory } from "./factories";
+//import { SettingsFactory, SettingsWebFactory } from "./factories";
 import { WebPageLauncherQueue } from "../src/webPageLauncherQueue";
 import * as sinon from "Sinon";
 import { isUrlPayload } from "../src/webPageLauncher";
@@ -46,7 +46,6 @@ describe("WebPageLaunchQueue", () => {
         queue.addLauncher(urls);
 
         urlManager.addUrls.calledWith(urls).should.be.ok;
-        fileManager.exportOutputJson.calledWith(urls, sinon.match.string).should.be.ok;
         queue.all().length.should.be.equal(0);
     })
 
