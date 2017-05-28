@@ -9,7 +9,7 @@ import { urlPayload } from "./webPageLauncher";
 @Inject
 export class DataManager implements IDataManager {
     private settingsWeb: SettingsWeb;
-    items: any[] = []; 
+    private items: any[] = []; 
 
     constructor(settingsWeb: SettingsWeb) {
         this.settingsWeb = settingsWeb;
@@ -23,9 +23,9 @@ export class DataManager implements IDataManager {
             winston.verbose("adding data");
             var items = Utils.isArray(item) ? item : [item];
             items = items.map((x) => this.validateDataItem(x));
-            //this.items = this.items.concat(items);
+            this.items = this.items.concat(items);
             // apply for flattening items
-            this.items = [].concat(items);
+            this.items = [].concat(this.items);
         }
     }
 
