@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@types/chai": "^3.5.1",
+    "@types/express": "^4.0.35",
     "@types/jquery": "^2.0.41",
     "@types/linq": "^2.2.33",
     "@types/md5": "^2.1.31",
