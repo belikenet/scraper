@@ -3,9 +3,9 @@
     "command": "tsc",
     "isShellCommand": true,
     "args": ["-p", ".vscode/tsconfig.json"],
-    "showOutput": "always",
+    "showOutput": "silent",
     "suppressTaskName": true,
-    "echoCommand": false,
+    "echoCommand": true,
     "tasks": [
         {
             "taskName": "build",
