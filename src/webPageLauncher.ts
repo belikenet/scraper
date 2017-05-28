@@ -54,7 +54,7 @@ export class WebPageLauncher implements WebPageLauncher {
         var _self = this;
 
         return vo(Utils.binarify(this.urls, _self.scraperConfig.instancesCount)
-                .map((bin) => this.scrape(bin, _self.scraperConfig.scraperAction, complete, 
+                .map((bin) => this.scrape(bin, _self.scraperConfig.scraperAction(), complete, 
                                                _self.scraperConfig.moreUrlsAction, urlComplete))
         ).catch((error) => {
             winston.error("ERROR: " + error);
@@ -104,7 +104,7 @@ export class WebPageLauncher implements WebPageLauncher {
 
                 if (_self.launcherConfig.depth == _self.scraperConfig.maxDepth){
                     if (dataScraper != null)
-                        item = yield nightmare.evaluate(dataScraper);
+                        item = yield vo(dataScraper(nightmare));
                 } else {                    
                     if (urlScraper != null){
                         var data = yield vo(urlScraper(nightmare));

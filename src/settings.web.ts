@@ -6,80 +6,102 @@ const URL = require('url').URL;
 import { Settings } from "./settings";
 import { Inject } from "di-typescript";
 
+
 var _pjs$ : JQueryStatic;
 type moreUrlTypeFunction = (depth?: number, url?: string) => any;
 type moreUrlTypes = moreUrlTypeFunction | string;
 
 
 export class SettingsWebConfig {
-    url: string = "urls.json";
-    maxDepth: number = 1; // starting from 1
+    url: string = "http://www.calu.edu/current-students/get-involved/clubs-and-organizations/";
+    maxDepth: number = 2; // starting from 1
     instancesCount: number = 4;
-    defaultTemplateValues : string[] = ["Society", "CA"]; // _type, country
-    profile: string = "suclubs.orgsync.com";
+    defaultTemplateValues : string[] = ["Society", "US"]; // _type, country
+    profile: string = "calu.edu";
     injectJQuery: boolean = false;
     waitFor: string|number = null;
     exportUrls : boolean = true;
-    moreUrls : any = null;
-    _moreUrls : any //moreUrlTypes
+    __moreUrls: any = "#tab_1 a";
+    _moreUrls : any = null;
+    moreUrls : any //moreUrlTypes
         = function (level: number, url: string) {
         return function * (nightmare) {
-            var data = [];
-            var nextPage: boolean = true;
-            var count: number = 0, page = 1;
-            for (var county of ["NT" , "VIC", "NSW", "QLD", "SA", "WA", "ACT", "TAS"]) {
-                yield nightmare.select("#search-state",county)
-                    .click(".search-by-name input.go");
-                nextPage = true;
-                page = 1;
-                while (nextPage) {
-                    var urls = yield nightmare
-                        .wait(12000)
-                        .evaluate (function () {
-                            var urls = $(".listing-header a");
-                            return jQuery.map(urls, (d) => d.href);
-                        });
-                    //winston.info(`post waiting county ${county} page ${page++}`)
+            return  yield nightmare.evaluate(function() {
+                return jQuery.makeArray($("#tab_1 a").map((x,v) => v["href"]));
+            });
+        }
+    };
+    _scraper: Function = null;
 
-                    data = data.concat(urls.map((x) => { return {url: x, county: county}; }));
+    scraper : any 
+        = function () {
+        return function * (nightmare) {
+            yield nightmare.evaluate(function() { $("#button-nav > li > a[data-tab='profile']").trigger("click");})
+                .wait(1000)
+                .wait(function () {return $('#floating_loading_tag:visible').length == 0});
 
-                    nextPage = yield nightmare.evaluate(function () {
-                        return $(".pagination a:contains('Next »')").length > 0;
-                    });
-                    if (nextPage)
-                        yield nightmare.click(".pagination a:last-child");
+
+            return  yield nightmare.evaluate(function() {
+                function scraper() {
+                    var x : any = {}; x.contact = {};
+                    var found;
+                    x.url = document.location.href;
+                    var regex = /Website\s*\b(.*)\s*/;
+
+                    x.name = $("h1").text();
+                    var match = regex.exec($(".panel-body").text());
+                    if (match) {
+                        x.contact.website = match[1];
+                    } else {
+                        //found = $("div.panel-body div.response > p > a:contains('http')");
+                        //if (found.length > 0)
+                        //    x.contact.website = found[0].href;
+                        //else
+                        //    x.contact.website = $(".portal-social").attr("href");                    }
+                        x.contact.website = $("div.panel-body div.response > p > a:contains('http'), .portal-social").attr("href");
+                    }
+
+                    found = $("div.panel-body > div.form-profile a:contains('@')");
+                    if (found.length > 0){
+                        x.contact.email = found[0].getAttribute("href").replace("mailto:","");
+                    }
+
+                    return x;
                 }
-
-                console.log(`finished County ${county}, county count: ${ data.length - count }`);
-                count = data.length;
-
-                yield nightmare.goto(url);
-            }
-            return data.map((x) => x.url);
+                return scraper();
+            });
         }
     }
-    _scraper: Function = null;
-    scraper: Function = function () {
-        var addressRegex = /(\b[\(\)\-\&'\/\w\s,-]+)\s+(?:Phone\:\s+([\d \(\)+-]+))?\s+(?:Fax:\s*([\d\(\) +-]+))?(?:\s*)/;
-        var phoneRegex = /(?:Phone:\s*([\d ]+)*)/;
-        var faxRegex = /(?:Fax:\s*([\d ]+)*)/;
-
-        var x : any = {}; x.contact = {};
-        var match: any = null;
-        x.url = document.location.href;
-        x.name = $(".profile-summary.profile-sidebar h5").text() || $(".profile-limited h1").text();
-        var info = $(".profile-summary.profile-sidebar p:nth-child(2)").text() || $(".profile-limited-contact p").text();
-        match = addressRegex.exec(info);
-        if (match != null) {
-            x.contact.address = match[1];
-            x.contact.phone = match[2];
-            x.contact.fax = match[3];
+    __scraper: Function = function () {
+        function sleep(delay)
+        {
+            var start = new Date().getTime();
+            while (new Date().getTime() < start + delay);
         }
-        match = $(".profile-summary.profile-sidebar p:contains('Email') a").attr("href");
-        if (match != undefined)
-            x.contact.email = match.replace("mailto:","");
-        match = $(".profile-summary.profile-sidebar p:contains('Website') a").attr("href") || $(".profile-summary.profile-sidebar > a").attr("href");
-        x.contact.website = match;
+        var x : any = {}; x.contact = {};
+        var found;
+        x.url = document.location.href;
+        var regex = /Website\s*\b(.*)\s*/;
+
+        // active tab profile
+        $("#button-nav > li > a[data-tab='profile']").trigger("click");
+
+        sleep(1500);
+
+        x.name = $("h1").text();
+        var match = regex.exec($(".panel-body").text());
+        if (match) {
+            x.contact.website = match[1];
+        } else {
+            found = $("div.panel-body div.response > p > a:contains('http')");
+            if (found.length > 0)
+                x.contact.website = found[0].href;
+        }
+
+        found = $("div.panel-body > div.form-profile a:contains('@')");
+        if (found.length > 0){
+            x.contact.email = found[0].getAttribute("href");
+        }
 
         return x;
     };
