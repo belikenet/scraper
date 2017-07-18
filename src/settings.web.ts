@@ -150,17 +150,17 @@ export class SettingsWeb extends SettingsWebConfig {
 
         function initProfileFolder(settings: Settings) {
             var outFolder = settings.outFolder && settings.outFolder.length > 0 ? settings.outFolder : "profiles"; // always set a default value for outFolder
-            if (self.profile == "") {
+            if (!self.profile || self.profile.trim().length == 0) {
                 try {
-                    var profileFolder = new URL(Array.isArray(self.url) ? self.url[0] : self.url)
+                    self._profile = new URL(Array.isArray(self.url) ? self.url[0] : self.url)
                                             .hostname.replace("www.","");
-                    self.profileFolder = path.resolve(outFolder, profileFolder);
                 } catch(ex) {
-                    self.profileFolder = path.resolve(outFolder, "no.profile");
+                    self._profile = "no.profile";
                 }
             } else {
-                self.profileFolder = path.resolve(outFolder, self.profile);
+                self._profile = self.profile;
             }
+            self.profileFolder = path.resolve(outFolder, self._profile);
             if (self.profileFolder && !fs.existsSync(self.profileFolder))
                     fs.mkdirSync(self.profileFolder)
         }

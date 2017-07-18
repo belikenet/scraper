@@ -28,9 +28,11 @@ describe("SettingsWeb", () => {
 
     it('populate profileFolder when url is valid', () => {
         var settings = SettingsFactory.empty();
-        var settingsWeb = SettingsWebFactory.empty(settings, { url: "http://www.google.com/page?123" });
-
+        var settingsWeb = SettingsWebFactory.empty(settings, { url: "http://www.google.com/page?123", profile: "" });
         settingsWeb.profileFolder.should.be.equal(path.resolve(".\\profiles","google.com"));
+
+        settingsWeb = SettingsWebFactory.empty(settings, { url: "http://www.google.es/page?123", profile: null });
+        settingsWeb.profileFolder.should.be.equal(path.resolve(".\\profiles","google.es"));
     })
     
     it('populate profileFolder to no.profile when url is not valid', () => {
