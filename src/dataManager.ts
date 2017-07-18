@@ -26,6 +26,7 @@ export class DataManager implements IDataManager {
             this.items = this.items.concat(items);
             // apply for flattening items
             this.items = [].concat(this.items);
+            return items;
         }
     }
 

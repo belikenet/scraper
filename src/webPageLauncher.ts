@@ -104,7 +104,9 @@ export class WebPageLauncher implements WebPageLauncher {
 
                 if (_self.launcherConfig.depth == _self.scraperConfig.maxDepth){
                     if (dataScraper != null)
-                        item = yield vo(dataScraper(nightmare));
+                        {
+                            item = yield vo(dataScraper(nightmare));
+                        }
                 } else {                    
                     if (urlScraper != null){
                         var data = yield vo(urlScraper(nightmare));
@@ -122,7 +124,9 @@ export class WebPageLauncher implements WebPageLauncher {
                 })
                 .then (() => {
                     if (item != null)
-                        complete(urlPayload, item);
+                        {
+                            complete(urlPayload, item);
+                        }
                 });
         }    
     }
