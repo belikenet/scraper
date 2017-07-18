@@ -3,69 +3,28 @@ import * as winston from "winston";
 
 
 const Datastore = require('nedb'), 
-      db = new Datastore({ filename: 'profiles\\profiles.db', autoload: true });
+      db = new Datastore({ filename: 'profiles\\profiles.db', autoload: true});
 
 export class web {
     depth: number = 1;
     isLeaf: boolean = true;
     isVisited: boolean = false;
     isVisitedWithErrors: boolean = false;
-    category: string = ""; // domain
+    profile: string = ""; // domain
     notes: string | string[];
     timestamp: Date;
     fragments: string[];
 
     data: any;
 
-    constructor (url: string, _type: string = "University", country: string = "CA", category : string = "schoolfinder.com") {
-        this.category = category;
-        this.data = {
-            name: null,
-            "_type" : _type,
-            url: url,
-            contact : {
-                country: country,
-                email: "",
-                phone: "",
-                fax: "",
-                address: "",
-                website: ""
-            }
-        }
-    }
-
-    private validateDataItem(source: any) : any {
-        function collapse(text:string) : string {
-            return S(text).collapseWhitespace().toString();
-        }
-        var merged = Object.assign({}, this.data, source);
-        merged.contact = Object.assign({}, this.data.contact, source.contact)
-        if (S(merged.name).isEmpty()) this.notes += "name not found. ";
-        else merged.name = collapse(merged.name);
-        if (S(merged.url).isEmpty()) this.notes += "url not found. ";
-        if (S(merged._type).isEmpty()) this.notes += "type not found. ";
-        if (S(merged.contact.country).isEmpty()) this.notes += "country not found. ";
-        merged.contact.country = collapse(merged.contact.country);
-        merged.contact.phone = collapse(merged.contact.phone);
-        merged.contact.fax = collapse(merged.contact.fax);
-        merged.contact.email = collapse(merged.contact.email);
-        merged.contact.website = collapse(merged.contact.website);
-        merged.contact.address = S(merged.contact.address)
-                                    .lines()
-                                    .map((l) => collapse(l))
-                                    .filter(i => !S(i).isEmpty())
-                                    .join(", ");
-
-        this.data = merged;
-    }
-
+    constructor() {}
 }
 
 export class Repository {
 
-    getByCategory(category) {
+    getByProfile(profile) {
         return new Promise(function (resolve, reject) {
-            db.find({category: category}, (error, docs) => {
+            db.find({profile: profile}, (error, docs) => {
                 if (error != null && error != undefined) 
                     return reject(error);
                 return resolve(docs);
@@ -73,9 +32,9 @@ export class Repository {
         });
     }
 
-    getByCategoryNonVisited (category) {
+    getByProfileNonVisited (profile) {
         return new Promise(function (resolve, reject) {
-            db.find({category: category, isVisited: false}, (error, docs) => {
+            db.find({profile: profile, isVisited: false}, (error, docs) => {
                 if (error != null && error != undefined) 
                     return reject(error);
                 return resolve(docs);
@@ -83,9 +42,9 @@ export class Repository {
         });
     }
 
-    getByCategoryAndUrl(category, url) {
+    getByProfileError (profile) {
         return new Promise(function (resolve, reject) {
-            db.find({category: category, "data.url" : url }, (error, docs) => {
+            db.find({profile: profile, isVisitedWithErrors: true}, (error, docs) => {
                 if (error != null && error != undefined) 
                     return reject(error);
                 return resolve(docs);
@@ -93,9 +52,9 @@ export class Repository {
         });
     }
 
-    removeByCategory(category){
+    getByProfileAndUrl(profile, url) {
         return new Promise(function (resolve, reject) {
-            db.remove({category: category}, {multi: true}, (error, docs) => {
+            db.find({profile: profile, "data.url" : url }, (error, docs) => {
                 if (error != null && error != undefined) 
                     return reject(error);
                 return resolve(docs);
@@ -103,11 +62,23 @@ export class Repository {
         });
     }
 
-    upsert (item: web) {
+    removeByProfile(profile){
         return new Promise(function (resolve, reject) {
-            db.update({category: item.category, "data.name" : item.data.name, "data.url" : item.data.url }, {upsert: true, returnUpdatedDocs: true}, (error, count, docs) => {
-                if (error != null && error != undefined) return reject (error);
+            db.remove({profile: profile}, {multi: true}, (error, docs) => {
+                if (error != null && error != undefined) 
+                    return reject(error);
                 return resolve(docs);
+            });
+        });
+    }
+
+    upsert (items: web[]) {
+        return new Promise(function (resolve, reject) {
+            items.forEach(item => {
+                db.update({profile: item.profile, "data.name" : item.data.name, "data.url" : item.data.url }, {item}, {upsert: true, returnUpdatedDocs: true, multi: true}, (error, count, docs) => {
+                    if (error != null && error != undefined) return reject (error);
+                    return resolve(docs);
+                });
             });
         });
     }
@@ -120,26 +91,4 @@ export class Repository {
             });
         });
     }
-
-    insertUrls(moreUrls: any, depth: number, isLeaf: boolean) {
-        var records = moreUrls.map((u) => {
-            var w:web = null;
-            if (typeof u === "string")
-                w = new web(u);
-            else if (u["url"] !== undefined) {
-                w = new web (u["url"]);
-                delete u["url"];
-                w.notes = u;
-            }
-            if (w!=null){
-                w.depth = depth;
-                w.isLeaf = isLeaf;
-                return w;
-            }
-            winston.error("Url not recognized: " + u);
-            return undefined;
-        });
-        return this.insert(records.filter((u) => u === undefined));
-    }
-
 }

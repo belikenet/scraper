@@ -59,7 +59,6 @@ export class Scraper {
             this.fileManager.exportOutputJson(moreUrls, "urls.json");
         if (launcherConfig.depth + 1 <= this.settingsWeb.maxDepth) {
             this.queue.addLauncherChild(moreUrls, launcherConfig)
-            this.repository.insertUrls (moreUrls, launcherConfig.depth + 1, launcherConfig.depth + 1 == this.settingsWeb.maxDepth).then(() => {});
         }
     }
 
