@@ -13,22 +13,26 @@ type moreUrlTypes = moreUrlTypeFunction | string;
 
 
 export class SettingsWebConfig {
-    url: string = "http://www.calu.edu/current-students/get-involved/clubs-and-organizations/";
+    url: string|string[] = "https://www.dse.ulaval.ca/associations-etudiantes/categorie-associations/";
+    urlMode: string = "new"; // new | error | continue
     maxDepth: number = 2; // starting from 1
     instancesCount: number = 4;
-    defaultTemplateValues : string[] = ["Society", "US"]; // _type, country
-    profile: string = "calu.edu";
+    defaultTemplateValues : string[] = ["Society", "CA"]; // _type, country
+    profile: string = null;
+    _profile: string = null;
     injectJQuery: boolean = false;
     waitFor: string|number = null;
     exportUrls : boolean = true;
-    __moreUrls: any = "#tab_1 a";
+    __moreUrls: any = "a.msl-gl-link";
     _moreUrls : any = null;
     moreUrls : any //moreUrlTypes
         = function (level: number, url: string) {
         return function * (nightmare) {
-            return  yield nightmare.evaluate(function() {
-                return jQuery.makeArray($("#tab_1 a").map((x,v) => v["href"]));
-            });
+            var found = false, urls = [];
+
+            urls = yield nightmare.evaluate(function() { return Array.from(document.querySelectorAll("div.associations-cat-list.sort-wrapper ul > li > a")).map((d) => d["href"]) });
+
+            return urls;
         }
     };
     _scraper: Function = null;
@@ -36,81 +40,52 @@ export class SettingsWebConfig {
     scraper : any 
         = function () {
         return function * (nightmare) {
-            yield nightmare.evaluate(function() { $("#button-nav > li > a[data-tab='profile']").trigger("click");})
-                .wait(1000)
-                .wait(function () {return $('#floating_loading_tag:visible').length == 0});
 
-
-            return  yield nightmare.evaluate(function() {
+            return yield nightmare.evaluate(function () {
                 function scraper() {
-                    var x : any = {}; x.contact = {};
-                    var found;
-                    x.url = document.location.href;
-                    var regex = /Website\s*\b(.*)\s*/;
+                    var data = [];
 
-                    x.name = $("h1").text();
-                    var match = regex.exec($(".panel-body").text());
-                    if (match) {
-                        x.contact.website = match[1];
-                    } else {
-                        //found = $("div.panel-body div.response > p > a:contains('http')");
-                        //if (found.length > 0)
-                        //    x.contact.website = found[0].href;
-                        //else
-                        //    x.contact.website = $(".portal-social").attr("href");                    }
-                        x.contact.website = $("div.panel-body div.response > p > a:contains('http'), .portal-social").attr("href");
-                    }
+                    $("div.association-item").map((i,d) => {
+                        var x:any = {}; x.contact = {};
+                        x.fragments = [];
+                        x.url = document.location.href;
+                        x.name = $("span.name",d).text();
+                        populateWebsite(x, $("div.content > p:not(p.desc)", d)[0]);
+                        populateEmail(x, $("div.content > p:not(p.desc)", d)[0]);
+                        
+                        data.push(x);
+                    });
 
-                    found = $("div.panel-body > div.form-profile a:contains('@')");
-                    if (found.length > 0){
-                        x.contact.email = found[0].getAttribute("href").replace("mailto:","");
-                    }
-
-                    return x;
+                    return data;
+                }
+                function populateWebsite(x: any, element: any){
+                    let found = element.querySelector("a[href*='http']");
+                    if (found)
+                        {
+                            x.contact.website = found["href"];
+                            x.fragments.push(found);
+                        }                    
+                }
+                function populateEmail(x: any, element: any){
+                    let found = Array.from(element.querySelectorAll("a[href*='mailto']"));
+                    if (found.length>0)
+                        {
+                            //x.contact.email = found["href"].replace("mailto:","");
+                            x.contact.email = found.map(d => d["href"].replace("mailto:","")).join(";");
+                            x.fragments.push(found);
+                        }                    
                 }
                 return scraper();
             });
         }
-    }
-    __scraper: Function = function () {
-        function sleep(delay)
-        {
-            var start = new Date().getTime();
-            while (new Date().getTime() < start + delay);
-        }
-        var x : any = {}; x.contact = {};
-        var found;
-        x.url = document.location.href;
-        var regex = /Website\s*\b(.*)\s*/;
-
-        // active tab profile
-        $("#button-nav > li > a[data-tab='profile']").trigger("click");
-
-        sleep(1500);
-
-        x.name = $("h1").text();
-        var match = regex.exec($(".panel-body").text());
-        if (match) {
-            x.contact.website = match[1];
-        } else {
-            found = $("div.panel-body div.response > p > a:contains('http')");
-            if (found.length > 0)
-                x.contact.website = found[0].href;
-        }
-
-        found = $("div.panel-body > div.form-profile a:contains('@')");
-        if (found.length > 0){
-            x.contact.email = found[0].getAttribute("href");
-        }
-
-        return x;
     };
+
     dataTemplate = {
         name: null,
-        "_type" : "School",
+        "_type" : null,
         url: null,
         contact : {
-            country: "AU",
+            country: null,
             email: "",
             phone: "",
             fax: "",
